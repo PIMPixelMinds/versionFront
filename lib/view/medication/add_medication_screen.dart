@@ -42,7 +42,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
   File? _imageFile;
   bool _isEditing = false;
   bool _notifyLowStock = true; // Nouveau
-  Color _selectedColor = AppColors.primaryBlue; // Nouveau
+  Color _selectedColor = Colors.blue; // Nouveau
   List<Map<String, dynamic>> _existingReminders = [];
   // Ajoute ici :
   bool _remindersHaveChanged() {
@@ -321,6 +321,10 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
             _notesController.text.isNotEmpty ? _notesController.text : null,
       };
 
+      // Add scheduledDate to medicationData
+      medicationData['scheduledDate'] =
+          DateTime.now().toIso8601String(); // Set to current date
+
       // Gestion des jours spécifiques
       if (_selectedFrequency == FrequencyType.specific_days ||
           _selectedFrequency == FrequencyType.weekly ||
@@ -341,65 +345,43 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
 
         // Ajouter les IDs des rappels existants pour éviter la duplication
         if (_existingReminders.isNotEmpty) {
-          // Créer une liste d'IDs de rappels existants
           final List<Map<String, dynamic>> reminderUpdates = [];
-
-          // Vérifier si les horaires ont changé
           if (_remindersHaveChanged()) {
-            // Si les horaires ont changé, supprimer tous les rappels existants et créer de nouveaux
             medicationData['deleteAllReminders'] = true;
-
-            // Créer de nouveaux rappels pour chaque horaire sélectionné
             for (int i = 0; i < _selectedTimes.length; i++) {
               reminderUpdates.add({
                 'scheduledTime': _selectedTimes[i],
               });
             }
           } else {
-            // Si les horaires n'ont pas changé, conserver les rappels existants
             for (int i = 0; i < _selectedTimes.length; i++) {
               final String time = _selectedTimes[i];
-
-              // Chercher un rappel existant avec le même horaire
               final existingReminderIndex = _existingReminders
                   .indexWhere((r) => r['scheduledTime'] == time);
-
               if (existingReminderIndex != -1) {
-                // Si un rappel existant a été trouvé, utiliser son ID
                 reminderUpdates.add({
                   'id': _existingReminders[existingReminderIndex]['id'],
                   'scheduledTime': time,
                 });
               } else {
-                // Sinon, créer un nouveau rappel sans ID
                 reminderUpdates.add({
                   'scheduledTime': time,
                 });
               }
             }
           }
-
-          // Ajouter la liste des mises à jour de rappels aux données du médicament
           medicationData['reminderUpdates'] = reminderUpdates;
         }
         success = await viewModel.updateMedication(
-          context,
-          widget.medicationId!,
-          medicationData,
-          imageFile: _imageFile,
-        );
+            context, widget.medicationId!, medicationData,
+            imageFile: _imageFile);
       } else {
-        success = await viewModel.addMedication(
-          context,
-          medicationData,
-          imageFile: _imageFile,
-        );
+        success = await viewModel.addMedication(context, medicationData,
+            imageFile: _imageFile);
       }
 
       if (success && mounted) {
-        // Rafraîchir les rappels immédiatement
         await viewModel.fetchTodayReminders(context);
-        // Attendre un court instant pour s'assurer que les rappels sont bien mis à jour
         await Future.delayed(const Duration(milliseconds: 500));
         Navigator.pop(context);
       }

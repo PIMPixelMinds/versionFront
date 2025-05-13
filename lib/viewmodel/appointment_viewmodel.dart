@@ -81,4 +81,23 @@ class AppointmentViewModel extends ChangeNotifier {
     isLoading = false;
     notifyListeners();
   }
+
+  String? _userId;
+  String? get userId => _userId;
+
+  Future<void> fetchMyAppointmentUserId() async {
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      _userId = await _repository.getMyAppointmentUserId();
+      errorMessage = null;
+    } catch (e) {
+      errorMessage = e.toString();
+      _userId = null;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
 }

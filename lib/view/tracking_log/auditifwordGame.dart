@@ -1,12 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:pim/data/repositories/ai_service.dart';
-import 'package:pim/core/constants/app_colors.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class AuditifWordGame extends StatefulWidget {
-  const AuditifWordGame({super.key});
-
   @override
   State<AuditifWordGame> createState() => _AuditifWordGameState();
 }
@@ -20,6 +17,7 @@ class _AuditifWordGameState extends State<AuditifWordGame> {
   int _score = 0;
   bool _ttsSpeaking = false;
   bool _gameCompleted = false;
+  bool _hasSpoken = false;
 
   final TextEditingController _textController = TextEditingController();
 
@@ -27,46 +25,89 @@ class _AuditifWordGameState extends State<AuditifWordGame> {
   void initState() {
     super.initState();
     _configureTTS();
+    _fetchAndSpeakWords();
   }
 
   @override
   void dispose() {
     _tts.stop();
+    _textController.dispose();
     super.dispose();
   }
 
-  void _configureTTS() {
-    _tts.setCompletionHandler(() => setState(() => _ttsSpeaking = false));
-    _tts.setStartHandler(() => setState(() => _ttsSpeaking = true));
-    _tts.setLanguage("en-US");
+  void _configureTTS() async {
+    _tts.setCompletionHandler(() {
+      setState(() {
+        _ttsSpeaking = false;
+      });
+    });
+
+    _tts.setStartHandler(() {
+      setState(() {
+        _ttsSpeaking = true;
+      });
+    });
+
+    await _tts.setLanguage("en-US");
+
+    if (Platform.isIOS) {
+      await _tts.setSharedInstance(true);
+      await _tts.setIosAudioCategory(
+        IosTextToSpeechAudioCategory.playback,
+        [IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+         IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+      IosTextToSpeechAudioCategoryOptions.mixWithOthers,],
+      );
+    }
   }
 
   Future<void> _fetchAndSpeakWords() async {
     try {
       _gameWords = await _geminiAPI.generateWords();
-      setState(() {});
+      setState(() {
+        _hasSpoken = true;
+      });
+
+      print("AI Words: ${_gameWords.join(", ")}");
 
       for (String word in _gameWords) {
         await _tts.speak(word);
-        await Future.delayed(const Duration(seconds: 4));
+        await Future.delayed(const Duration(seconds: 2));
       }
 
-      setState(() => _ttsSpeaking = false);
+      setState(() {
+        _ttsSpeaking = false;
+      });
     } catch (e) {
-      debugPrint("Error fetching words: $e");
+      print("Error fetching words: $e");
+      setState(() {
+        _ttsSpeaking = false;
+        _hasSpoken = true;
+      });
     }
   }
 
   void _checkAnswer() {
-    if (_userInput.isEmpty) return;
+    if (_userInput.isEmpty) {
+      print("No input detected, please try again.");
+      return;
+    }
 
-    final normalizedUserInput = _userInput.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-    final userWords = normalizedUserInput.split(' ');
-    final normalizedAIWords = _gameWords.map((word) => word.toLowerCase().trim()).toList();
+    print("User Input: $_userInput");
+
+    String normalizedUserInput =
+        _userInput.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+
+    List<String> userWords = normalizedUserInput.split(' ');
+
+    List<String> normalizedAIWords =
+        _gameWords.map((word) => word.toLowerCase().trim()).toList();
 
     int correctCount = 0;
-    for (final word in normalizedAIWords) {
-      if (userWords.contains(word)) correctCount++;
+    for (String word in normalizedAIWords) {
+      if (userWords.contains(word)) {
+        correctCount++;
+      }
     }
 
     setState(() {
@@ -74,29 +115,34 @@ class _AuditifWordGameState extends State<AuditifWordGame> {
       _gameCompleted = true;
     });
 
+    print("Score: $_score out of ${_gameWords.length}");
+
     _showResultDialog(_score);
   }
 
   void _showResultDialog(int score) {
-    final theme = Theme.of(context);
-    final locale = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.dialogBackgroundColor,
-        title: Text(
-          locale.results,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text(
+          "Results",
           textAlign: TextAlign.center,
-          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Poppins',
+              color: Colors.white),
         ),
+        backgroundColor: Colors.blue.shade700,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              locale.youRemembere(_score, _gameWords.length),
+              "You remembered $score out of ${_gameWords.length} words!",
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge,
+              style: const TextStyle(
+                  fontSize: 18, fontFamily: 'Poppins', color: Colors.white),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -107,16 +153,23 @@ class _AuditifWordGameState extends State<AuditifWordGame> {
                   _userInput = "";
                   _score = 0;
                   _gameCompleted = false;
+                  _hasSpoken = false;
                   _fetchAndSpeakWords();
                 });
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.blue.shade700,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text(locale.playAgain, style: const TextStyle(fontSize: 18, color: Colors.white)),
-            )
+              child: const Text(
+                "Play Again",
+                style: TextStyle(fontSize: 18, fontFamily: 'Poppins'),
+              ),
+            ),
           ],
         ),
       ),
@@ -125,65 +178,100 @@ class _AuditifWordGameState extends State<AuditifWordGame> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final locale = AppLocalizations.of(context)!;
-
     return Scaffold(
+      backgroundColor: Colors.blue.shade700,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        title: const Text(
+          "Auditory Word Game",
+          style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 22,
+              fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.blue.shade700,
         elevation: 0,
-        centerTitle: true,
-        title: Text(locale.auditoryGameTitle, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              locale.auditoryGameInstruction,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            IconButton(
-              icon: Icon(
-                _ttsSpeaking ? Icons.volume_up : Icons.volume_off,
-                size: 50,
-                color: AppColors.primaryBlue,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade700, Colors.blue.shade400],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                "Listen to the words, then type them below!",
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Poppins',
+                    color: Colors.white),
+                textAlign: TextAlign.center,
               ),
-              onPressed: () {
-                if (_ttsSpeaking) {
-                  _tts.stop();
-                } else {
-                  _fetchAndSpeakWords();
-                }
-              },
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _textController,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: isDark ? Colors.grey[800] : Colors.grey[200],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                labelText: locale.typeWordsHint,
-                labelStyle: TextStyle(color: AppColors.primaryBlue),
+              const SizedBox(height: 10),
+              IconButton(
+                icon: Icon(
+                  _ttsSpeaking ? Icons.volume_up : Icons.volume_off,
+                  size: 50,
+                  color: Colors.white,
+                ),
+                onPressed: _hasSpoken
+                    ? null
+                    : () {
+                        _fetchAndSpeakWords();
+                      },
               ),
-              onChanged: (value) => setState(() => _userInput = value),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _checkAnswer,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              const SizedBox(height: 20),
+              Opacity(
+                opacity: _ttsSpeaking || _gameCompleted ? 0.6 : 1.0,
+                child: TextField(
+                  controller: _textController,
+                  enabled: !_ttsSpeaking && !_gameCompleted,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    labelText: _ttsSpeaking
+                        ? "Wait for words to finish"
+                        : "Type the words you heard",
+                    labelStyle: const TextStyle(color: Colors.blueAccent),
+                  ),
+                  style: const TextStyle(fontFamily: 'Poppins'),
+                  onChanged: (value) {
+                    setState(() {
+                      _userInput = value;
+                    });
+                  },
+                ),
               ),
-              child: Text(locale.submit, style: const TextStyle(color: Colors.white)),
-            ),
-          ],
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed:
+                    _gameCompleted || _ttsSpeaking ? null : _checkAnswer,
+                child: const Text(
+                  "Submit",
+                  style: TextStyle(fontFamily: 'Poppins', color: Colors.blue),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.blue.shade700,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 30, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

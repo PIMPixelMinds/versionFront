@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/app_colors.dart';
 import '../../data/model/medication_models.dart';
 import '../../viewmodel/medication_viewmodel.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -24,14 +23,28 @@ class _StockProgressCardState extends State<StockProgressCard> {
       _fetchError = null;
     });
     try {
+      print(
+          "Tentative de récupération de l'historique de stock pour ${widget.medication.id}");
       final history =
           await Provider.of<MedicationViewModel>(context, listen: false)
-              .getStockHistory(widget.medication.id, onError: (msg) {
+              .getCompleteStockHistory(widget.medication.id, onError: (msg) {
+        print("Erreur signalée par le ViewModel: $msg");
         setState(() => _fetchError = msg);
       });
+      print("Historique récupéré: ${history.length} entrées");
+      if (history.isEmpty) {
+        print("L'historique est vide");
+        setState(() => _fetchError = "Aucun historique de stock disponible");
+      } else {
+        // Afficher les détails du premier élément pour le débogage
+        final first = history.first;
+        print(
+            "Premier élément: type=${first.type}, previousStock=${first.previousStock}, currentStock=${first.currentStock}");
+      }
       setState(() => _stockHistory = history);
     } catch (e) {
-      setState(() => _fetchError = 'Erreur lors de la rÃ©cupÃ©ration du stock');
+      print("Exception lors de la récupération de l'historique: $e");
+      setState(() => _fetchError = 'Erreur lors de la récupération du stock');
     }
     setState(() => _loading = false);
   }
@@ -81,15 +94,19 @@ class _StockProgressCardState extends State<StockProgressCard> {
                                       ? Icons.add_circle
                                       : entry.type == 'take'
                                           ? Icons.remove_circle
-                                          : Icons.edit,
+                                          : entry.type == 'skip'
+                                              ? Icons.cancel
+                                              : Icons.edit,
                                   color: entry.type == 'add'
                                       ? Colors.green
                                       : entry.type == 'take'
                                           ? Colors.red
-                                          : Colors.grey,
+                                          : entry.type == 'skip'
+                                              ? Colors.orange
+                                              : Colors.grey,
                                 ),
                                 title: Text(
-                                  '${entry.type == 'add' ? 'Ajout' : entry.type == 'take' ? 'Prise' : 'Ajustement'} : ${entry.changeAmount > 0 ? '+' : ''}${entry.changeAmount}',
+                                  '${entry.type == 'add' ? 'Ajout' : entry.type == 'take' ? 'Prise' : entry.type == 'skip' ? 'Manqué' : 'Ajustement'} : ${entry.changeAmount > 0 ? '+' : ''}${entry.changeAmount}',
                                   style: TextStyle(
                                     color: isDarkMode
                                         ? Colors.white
@@ -97,14 +114,17 @@ class _StockProgressCardState extends State<StockProgressCard> {
                                   ),
                                 ),
                                 subtitle: Text(
-  localizations.stockFlow(
-    entry.previousStock.toString(),
-    entry.currentStock.toString(), // Renamed from newStock
-  ) + '\n${entry.notes ?? ''}',
-  style: TextStyle(
-    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-  ),
-),
+                                  localizations.stockFlow(
+                                        entry.previousStock.toString(),
+                                        entry.currentStock.toString(),
+                                      ) +
+                                      '\n${entry.notes ?? ''}',
+                                  style: TextStyle(
+                                    color: isDarkMode
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
+                                  ),
+                                ),
                                 trailing: Text(
                                   '${entry.createdAt.day}/${entry.createdAt.month} ${entry.createdAt.hour}:${entry.createdAt.minute.toString().padLeft(2, '0')}',
                                   style: TextStyle(
@@ -125,7 +145,7 @@ class _StockProgressCardState extends State<StockProgressCard> {
             child: Text(
               localizations.close,
               style: TextStyle(
-                color: isDarkMode ? Colors.blue[300] : AppColors.primaryBlue,
+                color: isDarkMode ? Colors.blue[300] : Colors.blue,
               ),
             ),
           ),

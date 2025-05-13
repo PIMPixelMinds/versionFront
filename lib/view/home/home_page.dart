@@ -289,6 +289,9 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  List<TextEditingController> otpControllers =
+      List.generate(6, (index) => TextEditingController());
+  List<FocusNode> focusNodes = List.generate(6, (index) => FocusNode());
   int _currentIndex = 0;
   bool _hasSubmittedHealthData = false;
   final List<String> _appointments = [
@@ -329,8 +332,8 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     print('DashboardPage initState called');
     _initializeNotifications().then((_) {
-    _getFCMToken(); // 🔑 Obtenir et afficher le token FCM
-  });
+      _getFCMToken(); // 🔑 Obtenir et afficher le token FCM
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       print('Fetching appointments, weekly submissions, and health data');
       final appointmentViewModel =
@@ -382,46 +385,44 @@ class _DashboardPageState extends State<DashboardPage> {
         ?.createNotificationChannel(channel);
   }
 
-Future<void> _getFCMToken() async {
-  try {
-    final settings = await FirebaseMessaging.instance.requestPermission();
-    if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-      print("❌ Notifications not authorized");
-      return;
+  Future<void> _getFCMToken() async {
+    try {
+      final settings = await FirebaseMessaging.instance.requestPermission();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        print("❌ Notifications not authorized");
+        return;
+      }
+
+      // Attendre que l’APNs token soit disponible (max 10s)
+      String? apnsToken;
+      int retry = 0;
+      while (apnsToken == null && retry < 10) {
+        await Future.delayed(Duration(seconds: 1));
+        apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        retry++;
+      }
+
+      if (apnsToken != null) {
+        print("📲 APNs token: $apnsToken");
+
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+        print("✅ FCM token: $fcmToken");
+
+        // Tu peux envoyer le fcmToken à ton backend ici si besoin
+      } else {
+        print("❌ APNs token still not set after retries.");
+      }
+    } catch (e) {
+      print("❌ Error retrieving FCM token: $e");
     }
-
-    // Attendre que l’APNs token soit disponible (max 10s)
-    String? apnsToken;
-    int retry = 0;
-    while (apnsToken == null && retry < 10) {
-      await Future.delayed(Duration(seconds: 1));
-      apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-      retry++;
-    }
-
-    if (apnsToken != null) {
-      print("📲 APNs token: $apnsToken");
-
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      print("✅ FCM token: $fcmToken");
-
-      // Tu peux envoyer le fcmToken à ton backend ici si besoin
-    } else {
-      print("❌ APNs token still not set after retries.");
-    }
-  } catch (e) {
-    print("❌ Error retrieving FCM token: $e");
   }
-}
-
 
   Future<void> fetchWeeklySubmissions() async {
     try {
       final token = await getToken();
       print('Fetching weekly submissions with token: $token');
       final response = await http.get(
-        Uri.parse(
-            'http://172.205.131.226:3000/questionnaire/weekly-submissions'),
+        Uri.parse('http://192.168.1.158:3000/questionnaire/weekly-submissions'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -565,8 +566,8 @@ Future<void> _getFCMToken() async {
                           ),
                         ),
                       const SizedBox(height: 10),
-                      Text(
-                          'If data is still missing, please enable Health permissions in Settings.'),
+                      Text(AppLocalizations.of(context)!
+                          .healthPermissionDeniedExplanation),
                     ],
                   ),
                 ),
@@ -1125,6 +1126,174 @@ Future<void> _getFCMToken() async {
     final localizations = AppLocalizations.of(context)!;
     final userName = authViewModel.userProfile?["fullName"] ?? '';
 
+    void _onOTPEntered(BuildContext context, int index, String value) {
+      if (value.isNotEmpty) {
+        if (index < focusNodes.length - 1) {
+          FocusScope.of(context).requestFocus(focusNodes[index + 1]);
+        } else {
+          FocusScope.of(context).unfocus();
+        }
+      } else {
+        if (index > 0) {
+          FocusScope.of(context).requestFocus(focusNodes[index - 1]);
+        }
+      }
+    }
+
+    void showVerificationDialog(BuildContext context) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          final bool isDarkMode =
+              Theme.of(context).brightness == Brightness.dark;
+          return Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SingleChildScrollView(
+                  child: ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.9),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'E-mail address verification',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Please check your e-mail enter the 6-digit code sent to you.',
+                        style: TextStyle(fontSize: 14),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 15),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          6,
+                          (index) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: SizedBox(
+                              width: 35,
+                              height: 40,
+                              child: TextField(
+                                controller: otpControllers[index],
+                                focusNode: focusNodes[index],
+                                textAlign: TextAlign.center,
+                                keyboardType: TextInputType.number,
+                                maxLength: 1,
+                                onChanged: (value) =>
+                                    _onOTPEntered(context, index, value),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor:
+                                      isDarkMode ? Colors.black : Colors.white,
+                                  counterText: "",
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                        color: AppColors.primaryBlue),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primaryBlue,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              for (var controller in otpControllers) {
+                                controller.clear();
+                              }
+                              Navigator.of(context).pop();
+                            },
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: isDarkMode ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryBlue,
+                            ),
+                            onPressed: () async {
+                              final email = authViewModel.userProfile?["email"];
+                              if (email == null || email.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text("Email not available")),
+                                );
+                                return;
+                              }
+
+                              final otpCode =
+                                  otpControllers.map((c) => c.text).join();
+
+                              final success =
+                                  await authViewModel.verifyEmailOtp(
+                                context,
+                                email,
+                                otpCode,
+                              );
+
+                              if (success) {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text("Email verified successfully!")),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          "Verification failed. Please try again.")),
+                                  );
+                                }
+                              },
+                              child: Text(
+                                localizations.verifyVerif,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              )));
+        },
+      );
+    }
+
 // Date locale (ex : "Fri, 2 May" → "ven., 2 mai")
     final locale = Localizations.localeOf(context).languageCode;
     final formattedDate =
@@ -1134,32 +1303,94 @@ Future<void> _getFCMToken() async {
       padding: const EdgeInsets.only(top: 24.0, left: 8.0, right: 8.0),
       child: Column(
         children: [
+          if (authViewModel.userProfile?["verified"] == false) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Click here to verify your email",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final email = authViewModel.userProfile?["email"];
+                      if (email == null || email.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Email not available")),
+                        );
+                        return;
+                      }
+
+                      await authViewModel.sendVerifyEmail(
+                        context: context,
+                        email: email,
+                      );
+
+                      for (var controller in otpControllers) {
+                        controller.clear();
+                      }
+                      showVerificationDialog(context);
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      side: const BorderSide(color: Colors.white),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    child: const Text(
+                      "Verify",
+                      style: TextStyle(color: Colors.white, fontSize: 15),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // 👇 Greeting and icons in the same row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "${localizations.hi}, $userName!",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
+              // Greeting text
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "${localizations.hi}, $userName!",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formattedDate,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formattedDate,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+
+              // Notification & Profile Icons
               Row(
                 children: [
                   IconButton(
@@ -1208,8 +1439,7 @@ Future<void> _getFCMToken() async {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ProfilePage(),
-                        ),
+                            builder: (context) => const ProfilePage()),
                       );
                     },
                   ),

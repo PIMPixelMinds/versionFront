@@ -1,5 +1,7 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:pim/data/repositories/auth_repository.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/repositories/shared_prefs_service.dart';
@@ -38,14 +40,17 @@ class _ProfilePageState extends State<ProfilePage> {
     final authViewModel = Provider.of<AuthViewModel>(context);
     final localizations = AppLocalizations.of(context)!;
 
-    final String userName = authViewModel.userProfile?["fullName"] ?? "Jaydon Mango";
-    final String userEmail = authViewModel.userProfile?["email"] ?? "jaydonmango@gmail.com";
+    final String userName =
+        authViewModel.userProfile?["fullName"] ?? "Jaydon Mango";
+    final String userEmail =
+        authViewModel.userProfile?["email"] ?? "jaydonmango@gmail.com";
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
           localizations.profile,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          style: const TextStyle(
+              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: AppColors.primaryBlue,
       ),
@@ -63,7 +68,8 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildProfileHeader(bool isDarkMode, String userName, String userEmail) {
+  Widget _buildProfileHeader(
+      bool isDarkMode, String userName, String userEmail) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
@@ -73,7 +79,8 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 10),
           Text(
             userName.toUpperCase(),
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+            style: const TextStyle(
+                fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
           ),
           Text(
             userEmail,
@@ -84,8 +91,8 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildBottomSheet(BuildContext context, bool isDarkMode, AppLocalizations localizations) {
-    
+  Widget _buildBottomSheet(
+      BuildContext context, bool isDarkMode, AppLocalizations localizations) {
     return DraggableScrollableSheet(
       initialChildSize: 0.77,
       minChildSize: 0.77,
@@ -124,53 +131,66 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 20),
                 _buildSectionTitle(localizations.account, isDarkMode),
-                _buildProfileOption(context, Icons.person, localizations.personalInformation, () {
+                _buildProfileOption(
+                    context, Icons.person, localizations.personalInformation,
+                    () {
                   Navigator.pushNamed(context, '/personalInformation');
                 }, isDarkMode),
-                _buildProfileOption(context, Icons.lock, localizations.passwordSecurity, () {
+                _buildProfileOption(
+                    context, Icons.lock, localizations.passwordSecurity, () {
                   Navigator.pushNamed(context, '/passwordSecurity');
                 }, isDarkMode),
-                _buildProfileOption(context, Icons.medical_information, localizations.medicalHistory, () {
+                _buildProfileOption(context, Icons.medical_information,
+                    localizations.medicalHistory, () {
                   Navigator.pushNamed(context, '/medicalHistory');
                 }, isDarkMode),
-                _buildProfileOption(context, Icons.co_present, localizations.primaryCaregiver, () {
+                _buildProfileOption(
+                    context, Icons.co_present, localizations.primaryCaregiver,
+                    () {
                   Navigator.pushNamed(context, '/primaryCaregiver');
                 }, isDarkMode),
                 const SizedBox(height: 10),
                 const Divider(),
-                _buildProfileOption(context, Icons.settings, localizations.settings, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SetupPreferencesPage()), // <== ADD THIS NAVIGATION
-                  );
-                }, isDarkMode),
-                _buildProfileOption(context, Icons.article_outlined, localizations.termsAndConditions, () {
+                _buildProfileOption(
+                    context, Icons.settings, localizations.settings, () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => TermsAndPrivacyPage(
-                        title: localizations.termsOfService,
-                        url: 'https://www.freeprivacypolicy.com/live/23b52896-67fa-4345-a69a-5f9ecfefd4ff',
+                        builder: (_) => const SetupPreferencesPage()),
+                  );
+                }, isDarkMode),
+                _buildProfileOption(context, Icons.article_outlined,
+                    localizations.termsAndConditions, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TermsAndPrivacyPage(
+                        titleKey: 'termsAndConditions',
                       ),
                     ),
                   );
                 }, isDarkMode),
-                _buildProfileOption(context, Icons.privacy_tip_outlined, localizations.privacyPolicy, () {
+                _buildProfileOption(context, Icons.privacy_tip_outlined,
+                    localizations.privacyPolicy, () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => TermsAndPrivacyPage(
-                        title: localizations.privacyPolicy,
-                        url: 'https://www.freeprivacypolicy.com/live/c4301d27-eeeb-45a2-bc22-1bb8b4900776',
+                      builder: (_) => const TermsAndPrivacyPage(
+                        titleKey: 'privacyPolicy',
                       ),
                     ),
                   );
                 }, isDarkMode),
+                _buildProfileOption(context, Icons.help_outline,
+                    localizations.helpAssistance, () {}, isDarkMode),
+                const SizedBox(height: 15),
                 const Divider(),
-                _buildProfileOption(context, Icons.delete_forever, localizations.deleteMyAccount, () {
+                _buildProfileOption(context, Icons.delete_forever,
+                    localizations.deleteMyAccount, () {
                   _confirmDeleteAccount(context);
                 }, isDarkMode),
-                _buildProfileOption(context, Icons.logout, localizations.logOut, () {
+                _buildProfileOption(context, Icons.logout, localizations.logOut,
+                    () {
                   _logout(context);
                 }, isDarkMode),
                 const SizedBox(height: 10),
@@ -187,12 +207,16 @@ class _ProfilePageState extends State<ProfilePage> {
       padding: const EdgeInsets.only(top: 10, bottom: 5),
       child: Text(
         title,
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white60 : Colors.grey),
+        style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white60 : Colors.grey),
       ),
     );
   }
 
-  Widget _buildProfileOption(BuildContext context, IconData icon, String title, VoidCallback onTap, bool isDarkMode) {
+  Widget _buildProfileOption(BuildContext context, IconData icon, String title,
+      VoidCallback onTap, bool isDarkMode) {
     return GestureDetector(
       onTap: onTap,
       child: Card(
@@ -202,77 +226,102 @@ class _ProfilePageState extends State<ProfilePage> {
           leading: Icon(icon, color: isDarkMode ? Colors.white : Colors.grey),
           title: Text(
             title,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: isDarkMode ? Colors.white : Colors.black),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: isDarkMode ? Colors.white : Colors.black),
           ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          trailing:
+              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         ),
       ),
     );
   }
 
   Future<void> _logout(BuildContext context) async {
-  final localizations = AppLocalizations.of(context)!;
-  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
+    final String userName =
+        authViewModel.userProfile?["fullName"] ?? "Jaydon Mango";
 
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) {
-      return AlertDialog(
-        backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
-        title: Text(
-          localizations.confirmLogoutTitle,
-          style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+          title: Text(
+            localizations.confirmLogoutTitle,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        content: Text(
-          localizations.confirmLogoutMessage,
-          style: TextStyle(
-            color: isDarkMode ? Colors.white70 : Colors.black87,
+          content: Text(
+            localizations.confirmLogoutMessage,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white70 : Colors.black87,
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              localizations.cancel,
-              style: TextStyle(
-                color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(
+                localizations.cancel,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                ),
               ),
             ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: AppColors.primaryBlue,
+            TextButton(
+              onPressed: () async {
+                try {
+                  final String userName =
+                      authViewModel.userProfile?["fullName"] ?? "";
+                  print("Logging out user: $userName");
+
+                  // Unlink from backend
+                  await AuthRepository().clearFcmToken(userName);
+
+                  // Also clear from device
+                  await FirebaseMessaging.instance.deleteToken();
+
+                  await SharedPrefsService().clearAll();
+                } catch (e) {
+                  print("Error during logout cleanup: $e");
+                }
+
+                Navigator.of(ctx).pop(true);
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: AppColors.primaryBlue,
+              ),
+              child: Text(localizations.logout),
             ),
-            child: Text(localizations.logout),
-          ),
-        ],
-      );
-    },
-  );
+          ],
+        );
+      },
+    );
 
-  if (confirmed != true) return;
+    if (confirmed != true) return;
 
-  await _prefsService.clearAll();
+    await _prefsService.clearAll();
 
-  try {
-    await _googleSignIn.signOut();
-    await _googleSignIn.disconnect();
-  } catch (_) {
-    // Ignore errors
+    try {
+      await _googleSignIn.signOut();
+      await _googleSignIn.disconnect();
+    } catch (_) {
+      // Ignore errors
+    }
+
+    if (!mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(localizations.loggedOut)),
+    );
   }
-
-  if (!mounted) return;
-
-  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(localizations.loggedOut)),
-  );
-}
 
   void _confirmDeleteAccount(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
@@ -290,7 +339,8 @@ class _ProfilePageState extends State<ProfilePage> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
+              final authViewModel =
+                  Provider.of<AuthViewModel>(context, listen: false);
               await authViewModel.deleteProfile(context);
             },
             child: Text(
@@ -331,7 +381,8 @@ class _ProfilePageState extends State<ProfilePage> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               localizations.later,
-              style: TextStyle(color: isDarkMode ? Colors.grey[400] : Colors.grey),
+              style:
+                  TextStyle(color: isDarkMode ? Colors.grey[400] : Colors.grey),
             ),
           ),
           TextButton(
@@ -341,7 +392,8 @@ class _ProfilePageState extends State<ProfilePage> {
             },
             child: Text(
               localizations.editNow,
-              style: const TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: AppColors.primaryBlue, fontWeight: FontWeight.bold),
             ),
           ),
         ],

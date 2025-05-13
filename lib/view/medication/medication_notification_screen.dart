@@ -23,6 +23,16 @@ class _MedicationNotificationScreenState
 
   TextEditingController _searchController = TextEditingController();
 
+  Future<void> _loadRemindersForDate(DateTime date) async {
+    final viewModel = Provider.of<MedicationViewModel>(context, listen: false);
+    await viewModel.fetchRemindersForDate(context, date);
+    setState(() {
+      _visibleReminders = List.from(viewModel.todayReminders);
+    });
+  }
+
+  DateTime selectedDate = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -56,7 +66,7 @@ class _MedicationNotificationScreenState
             .toList();
       }
 
-      // Trier selon le critÃ¨re sÃ©lectionnÃ©
+      // Trier selon le critÃƒÆ’Ã‚Â¨re sÃƒÆ’Ã‚Â©lectionnÃƒÆ’Ã‚Â©
       switch (_sortCriteria) {
         case 'name':
           _visibleReminders.sort((a, b) => a.medication.name
@@ -139,28 +149,38 @@ class _MedicationNotificationScreenState
 
                 // Options de tri
                 Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-  child: SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Row(
-      children: [
-        Text(
-          localizations.sortBy,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-        const SizedBox(width: 8),
-        _buildSortChip(localizations.name, 'name', isDarkMode),
-        const SizedBox(width: 8),
-        _buildSortChip(localizations.timeOfDay, 'time', isDarkMode),
-        const SizedBox(width: 8),
-        _buildSortChip(localizations.type, 'type', isDarkMode),
-      ],
-    ),
-  ),
-),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    children: [
+                      Text(
+                        localizations.sortBy,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Utiliser un SingleChildScrollView pour permettre le dÃ©filement horizontal
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildSortChip(
+                                  localizations.name, 'name', isDarkMode),
+                              const SizedBox(width: 8),
+                              _buildSortChip(
+                                  localizations.timeOfDay, 'time', isDarkMode),
+                              const SizedBox(width: 8),
+                              _buildSortChip(
+                                  localizations.type, 'type', isDarkMode),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 8),
 
@@ -227,7 +247,7 @@ class _MedicationNotificationScreenState
     final slideController = ValueNotifier<Offset>(Offset.zero);
     final colorController = ValueNotifier<Color>(Colors.transparent);
 
-    // Fonction d'animation pour faire disparaÃ®tre la carte
+    // Fonction d'animation pour faire disparaÃƒÆ’Ã‚Â®tre la carte
     Future<void> animateCard({required bool isTake}) async {
       for (double dx = 0; dx <= 1.0; dx += 0.05) {
         slideController.value = Offset(isTake ? dx : -dx, 0);
@@ -248,12 +268,12 @@ class _MedicationNotificationScreenState
           r.scheduledTime == reminder.scheduledTime);
 
       if (index != -1) {
-        // Mettre Ã  jour l'Ã©tat local
+        // Mettre ÃƒÆ’  jour l'ÃƒÆ’Ã‚Â©tat local
         setState(() {
-          // Supprimer l'Ã©lÃ©ment de la liste visible
+          // Supprimer l'ÃƒÆ’Ã‚Â©lÃƒÆ’Ã‚Â©ment de la liste visible
           _visibleReminders.removeAt(index);
 
-          // Supprimer Ã©galement de la liste complÃ¨te si nÃ©cessaire
+          // Supprimer ÃƒÆ’Ã‚Â©galement de la liste complÃƒÆ’Ã‚Â¨te si nÃƒÆ’Ã‚Â©cessaire
           final allIndex = _allReminders.indexWhere((r) =>
               r.medication.id == reminder.medication.id &&
               r.scheduledTime == reminder.scheduledTime);
@@ -262,9 +282,9 @@ class _MedicationNotificationScreenState
           }
         });
 
-        // Mettre Ã  jour le ViewModel en dehors de setState
+        // Mettre ÃƒÆ’  jour le ViewModel en dehors de setState
         if (vmIndex != -1) {
-          // Utiliser Future.microtask pour s'assurer que cela se produit aprÃ¨s le cycle de rendu actuel
+          // Utiliser Future.microtask pour s'assurer que cela se produit aprÃƒÆ’Ã‚Â¨s le cycle de rendu actuel
           Future.microtask(() {
             viewModel.todayReminders.removeAt(vmIndex);
             viewModel.notifyListeners();
@@ -289,7 +309,7 @@ class _MedicationNotificationScreenState
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   color: isDarkMode
                       ? Colors.grey[850]
-                      : Colors.white, // ChangÃ© Ã  blanc/gris foncÃ©
+                      : Colors.white, // ChangÃƒÆ’Ã‚Â© ÃƒÆ’  blanc/gris foncÃƒÆ’Ã‚Â©
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: BorderSide(
@@ -309,14 +329,14 @@ class _MedicationNotificationScreenState
                               height: 50,
                               decoration: BoxDecoration(
                                 color: AppColors
-                                    .primaryBlue, // IcÃ´ne sur fond bleu
+                                    .primaryBlue, // IcÃƒÆ’Ã‚Â´ne sur fond bleu
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Icon(
                                   _getMedicationIconData(
                                       medication.medicationType),
-                                  color: Colors.white, // IcÃ´ne en blanc
+                                  color: Colors.white, // IcÃƒÆ’Ã‚Â´ne en blanc
                                   size: 24,
                                 ),
                               ),
@@ -369,51 +389,58 @@ class _MedicationNotificationScreenState
                           Row(
                             children: [
                               Expanded(
-                                child: OutlinedButton.icon(
-  icon: const Icon(Icons.check, color: Colors.green),
-  label: Text(
-    localizations.take,
-    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-  ),
-  style: OutlinedButton.styleFrom(
-    side: const BorderSide(color: Colors.green, width: 2),
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  ),
-  onPressed: () async {
-    await viewModel.takeMedication(
-      context,
-      medication.id,
-      DateTime.now(),
-    );
-    await animateCard(isTake: true);
-  },
-),
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.check,
+                                      color: Colors.white, size: 16),
+                                  label: Text(
+                                    localizations.take,
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  onPressed: () async {
+                                    await viewModel.takeMedication(
+                                      context,
+                                      medication.id,
+                                      DateTime.now(),
+                                      scheduledTime: reminder
+                                          .scheduledTime, // Pass the reminder's scheduled time
+                                    );
+                                    await animateCard(isTake: true);
+                                    await _loadRemindersForDate(
+                                        selectedDate); // Refresh reminders
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
-                                child: OutlinedButton.icon(
-  icon: const Icon(Icons.close, color: Colors.red),
-  label: Text(
-    localizations.skip,
-    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-  ),
-  style: OutlinedButton.styleFrom(
-    side: const BorderSide(color: Colors.red, width: 2),
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  ),
-  onPressed: () async {
-    await viewModel.skipMedication(
-      context,
-      medication.id,
-      reminder.scheduledDate,
-      reminder.scheduledTime,
-    );
-    await animateCard(isTake: false);
-  },
-),
-                                
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.close,
+                                      color: Colors.white),
+                                  label: Text(
+                                    localizations.skip,
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  onPressed: () async {
+                                    await viewModel.skipMedication(
+                                      context,
+                                      medication.id,
+                                      reminder.scheduledDate,
+                                      reminder.scheduledTime,
+                                    );
+                                    await animateCard(isTake: false);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                  ),
+                                ),
                               ),
                             ],
                           )
@@ -436,7 +463,8 @@ class _MedicationNotificationScreenState
                                       : Icons.skip_next,
                                   color: isTaken
                                       ? Colors.green
-                                      : Colors.orange, // IcÃ´ne en vert/orange
+                                      : Colors
+                                          .orange, // IcÃƒÆ’Ã‚Â´ne en vert/orange
                                   size: 18,
                                 ),
                                 const SizedBox(width: 8),
@@ -476,7 +504,7 @@ class _MedicationNotificationScreenState
     );
   }
 
-  // Nouvelle mÃ©thode pour obtenir uniquement l'IconData sans crÃ©er l'icÃ´ne
+  // Nouvelle mÃƒÆ’Ã‚Â©thode pour obtenir uniquement l'IconData sans crÃƒÆ’Ã‚Â©er l'icÃƒÆ’Ã‚Â´ne
   IconData _getMedicationIconData(String type) {
     switch (type) {
       case 'pill':
@@ -499,7 +527,7 @@ class _MedicationNotificationScreenState
       case 'pill':
         return Colors.orange;
       case 'capsule':
-        return AppColors.primaryBlue;
+        return Colors.blue;
       case 'injection':
         return Colors.green;
       case 'cream':

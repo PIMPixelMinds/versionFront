@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:pim/core/utils/medication_background_service.dart';
 import 'package:pim/data/model/medication_models.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_init;
@@ -10,9 +11,9 @@ class MedicationNotificationHelper {
   static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  static const String MEDICATION_CHANNEL_ID = 'medication_alarm_channel';
-  static const String MEDICATION_CHANNEL_NAME = 'Rappels de médicaments';
-  static const String MEDICATION_CHANNEL_DESC =
+  static const String medicationChannelId = 'medication_alarm_channel';
+  static const String medicationChannelName = 'Rappels de médicaments';
+  static const String medicationChannelDesc =
       'Notifications sonores pour les rappels de médicaments';
 
   static Future<void> initialize() async {
@@ -28,7 +29,8 @@ class MedicationNotificationHelper {
       requestSoundPermission: true,
     );
 
-    const InitializationSettings initializationSettings = InitializationSettings(
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
@@ -39,21 +41,25 @@ class MedicationNotificationHelper {
     );
 
     if (Platform.isAndroid) {
-      final androidPlugin = flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin =
+          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
       final granted = await androidPlugin?.requestNotificationsPermission();
       print("Android notification permissions granted: $granted");
     }
 
     await createNotificationChannel();
     await requestPermissions();
+
+    // Initialiser le service d'arrière-plan
+    await MedicationBackgroundService.initializeService();
   }
 
   static Future<void> createNotificationChannel() async {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      MEDICATION_CHANNEL_ID,
-      MEDICATION_CHANNEL_NAME,
-      description: MEDICATION_CHANNEL_DESC,
+      medicationChannelId,
+      medicationChannelName,
+      description: medicationChannelDesc,
       importance: Importance.max,
       playSound: true,
       sound: RawResourceAndroidNotificationSound('alarme'),
@@ -71,8 +77,8 @@ class MedicationNotificationHelper {
 
   static Future<void> requestPermissions() async {
     if (Platform.isIOS || Platform.isMacOS) {
-      final iosPlugin = flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
+      final iosPlugin =
+          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>();
 
       final result = await iosPlugin?.requestPermissions(
@@ -95,9 +101,9 @@ class MedicationNotificationHelper {
     required String body,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      MEDICATION_CHANNEL_ID,
-      MEDICATION_CHANNEL_NAME,
-      channelDescription: MEDICATION_CHANNEL_DESC,
+      medicationChannelId,
+      medicationChannelName,
+      channelDescription: medicationChannelDesc,
       importance: Importance.max,
       priority: Priority.high,
       sound: RawResourceAndroidNotificationSound('alarme'),
@@ -105,6 +111,8 @@ class MedicationNotificationHelper {
       enableVibration: true,
       fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
+      icon:
+          '@mipmap/ic_launcher', // Utiliser l'icône par défaut de l'application
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -113,7 +121,7 @@ class MedicationNotificationHelper {
       presentSound: true,
     );
 
-    final details = NotificationDetails(
+    const details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -136,9 +144,9 @@ class MedicationNotificationHelper {
     required DateTime scheduledTime,
   }) async {
     final androidDetails = AndroidNotificationDetails(
-      MEDICATION_CHANNEL_ID,
-      MEDICATION_CHANNEL_NAME,
-      channelDescription: MEDICATION_CHANNEL_DESC,
+      medicationChannelId,
+      medicationChannelName,
+      channelDescription: medicationChannelDesc,
       importance: Importance.max,
       priority: Priority.high,
       sound: RawResourceAndroidNotificationSound('alarme'),
@@ -147,6 +155,8 @@ class MedicationNotificationHelper {
       fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
       additionalFlags: Int32List.fromList(<int>[4]),
+      icon:
+          '@mipmap/ic_launcher', // Utiliser l'icône par défaut de l'application
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -171,10 +181,6 @@ class MedicationNotificationHelper {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
       payload: 'medication_$id',
-      uiLocalNotificationDateInterpretation: 
-          tz.TZDateTime.now(tz.local).isBefore(tzScheduledTime)
-              ? UILocalNotificationDateInterpretation.absoluteTime
-              : UILocalNotificationDateInterpretation.wallClockTime,
     );
 
     print("Notification scheduled: $title at $scheduledTime");
@@ -190,7 +196,8 @@ class MedicationNotificationHelper {
     print("All notifications cancelled.");
   }
 
-  static Future<void> scheduleAllReminders(List<MedicationReminder> reminders) async {
+  static Future<void> scheduleAllReminders(
+      List<MedicationReminder> reminders) async {
     print("Scheduling ${reminders.length} reminders...");
 
     for (final reminder in reminders) {
@@ -226,7 +233,8 @@ class MedicationNotificationHelper {
           await showMedicationNotification(
             id: reminder.id.hashCode,
             title: "Rappel de médicament en retard",
-            body: "Rappel: vous deviez prendre ${reminder.medication.name} à ${reminder.scheduledTime}",
+            body:
+                "Rappel: vous deviez prendre ${reminder.medication.name} à ${reminder.scheduledTime}",
           );
         }
       }
@@ -235,7 +243,9 @@ class MedicationNotificationHelper {
 
   static bool _isToday(DateTime date) {
     final now = DateTime.now();
-    return now.year == date.year && now.month == date.month && now.day == date.day;
+    return now.year == date.year &&
+        now.month == date.month &&
+        now.day == date.day;
   }
 
   static String _extractTimeString(dynamic rawTime) {

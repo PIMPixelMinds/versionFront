@@ -189,40 +189,36 @@ class MedicationViewModel extends ChangeNotifier {
 
   Future<bool> takeMedication(
       BuildContext context, String medicationId, DateTime takenAt,
-      {int? quantityTaken, String? notes, File? imageFile}) async {
+      {int? quantityTaken,
+      String? notes,
+      File? imageFile,
+      String? scheduledTime}) async {
     try {
       isLoading = true;
       errorMessage = '';
       notifyListeners();
 
+      // Create TakeMedicationDto with scheduledTime
       final takeMedicationDto = TakeMedicationDto(
         takenAt: takenAt,
         quantityTaken: quantityTaken,
         notes: notes,
+        scheduledTime: scheduledTime, // Pass scheduledTime
       );
 
-      // Appel Ã  l'API pour marquer comme pris
       await _repository.takeMedication(medicationId, takeMedicationDto,
           imageFile: imageFile);
-
-      // Annuler la notification associÃ©e
       await MedicationNotificationHelper.cancelNotification(
           medicationId.hashCode);
-
-      // IMPORTANT: Attendre avant de rafraÃ®chir pour permettre Ã  l'API de traiter
       await Future.delayed(const Duration(milliseconds: 500));
-
-      // CRITIQUE: Ces deux appels sont nÃ©cessaires pour mettre Ã  jour les listes
       await fetchTodayReminders(context);
       await refreshMedicationStats(context);
-
       return true;
     } catch (e) {
       errorMessage = "Error: $e";
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(errorMessage)));
       }
       return false;
     } finally {
@@ -238,25 +234,18 @@ class MedicationViewModel extends ChangeNotifier {
       errorMessage = '';
       notifyListeners();
 
-      // Appel Ã  l'API pour marquer comme sautÃ©
       await _repository.skipMedication(
           medicationId, scheduledDate, scheduledTime);
-
-      // Annuler la notification associÃ©e
       await MedicationNotificationHelper.cancelNotification(
           medicationId.hashCode);
-
-      // CRITIQUE: Ces deux appels sont nÃ©cessaires pour mettre Ã  jour les listes
       await fetchTodayReminders(context);
       await refreshMedicationStats(context);
-
       return true;
     } catch (e) {
       errorMessage = "Error: $e";
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(errorMessage)));
       }
       return false;
     } finally {
@@ -290,7 +279,7 @@ class MedicationViewModel extends ChangeNotifier {
   Future<void> fetchRemindersForDate(
       BuildContext context, DateTime date) async {
     final token = await _prefsService.getAccessToken();
-    print('ðŸ“¢ Auth token used: $token');
+    print('Ã°Å¸â€œÂ¢ Auth token used: $token');
     try {
       isLoading = true;
       errorMessage = '';
@@ -320,7 +309,7 @@ class MedicationViewModel extends ChangeNotifier {
       notifyListeners();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Reminders corrigÃ©s avec succÃ¨s !')));
+            SnackBar(content: Text('Reminders corrigÃƒÂ©s avec succÃƒÂ¨s !')));
       }
     } catch (e) {
       if (context.mounted) {
@@ -332,13 +321,8 @@ class MedicationViewModel extends ChangeNotifier {
 
   Future<void> refreshMedicationStats(BuildContext context) async {
     try {
-      // RÃ©cupÃ©rer l'instance de HealthTrackerViewModel
-      final healthTrackerViewModel = Provider.of<HealthTrackerViewModel>(
-        context,
-        listen: false,
-      );
-
-      // RafraÃ®chir les statistiques
+      final healthTrackerViewModel =
+          Provider.of<HealthTrackerViewModel>(context, listen: false);
       await healthTrackerViewModel.fetchMedicationStats(context);
     } catch (e) {
       print('Error refreshing medication stats: $e');
@@ -371,9 +355,9 @@ class MedicationViewModel extends ChangeNotifier {
           notes: notes,
           token: token);
       notifyListeners();
-      if (onSuccess != null) onSuccess('Stock mis Ã  jour avec succÃ¨s');
+      if (onSuccess != null) onSuccess('Stock mis Ãƒ  jour avec succÃƒÂ¨s');
     } catch (e) {
-      if (onError != null) onError('Erreur lors de la mise Ã  jour du stock');
+      if (onError != null) onError('Erreur lors de la mise Ãƒ  jour du stock');
       rethrow;
     }
   }
@@ -392,10 +376,60 @@ class MedicationViewModel extends ChangeNotifier {
           notes: notes,
           token: token);
       notifyListeners();
-      if (onSuccess != null) onSuccess('Stock ajoutÃ© avec succÃ¨s');
+      if (onSuccess != null) onSuccess('Stock ajoutÃƒÂ© avec succÃƒÂ¨s');
     } catch (e) {
       if (onError != null) onError('Erreur lors de l\'ajout de stock');
       rethrow;
+    }
+  }
+
+  Future<List<StockHistory>> getCompleteStockHistory(String medicationId,
+      {Function(String message)? onError}) async {
+    try {
+      // RÃ©cupÃ©rer l'historique de stock
+      final stockHistory = await _repository.fetchStockHistory(medicationId);
+
+      // RÃ©cupÃ©rer l'historique des mÃ©dicaments (prises et sauts)
+      final medicationHistory =
+          await _repository.getMedicationHistory(medicationId);
+
+      print("Historique de stock: ${stockHistory.length} entrÃ©es");
+      print("Historique de mÃ©dicaments: ${medicationHistory.length} entrÃ©es");
+
+      // Convertir l'historique des mÃ©dicaments en historique de stock
+      final List<StockHistory> convertedHistory = [];
+
+      for (var item in medicationHistory) {
+        if (item.skipped) {
+          // CrÃ©er une entrÃ©e d'historique de stock pour les mÃ©dicaments sautÃ©s
+          convertedHistory.add(StockHistory(
+            id: item.id,
+            medicationId: item.medicationId,
+            previousStock:
+                0, // Ces valeurs ne sont pas importantes pour les sauts
+            currentStock: 0, // car ils n'affectent pas le stock
+            changeAmount: 0,
+            notes: item.notes,
+            type: 'skip', // Type spÃ©cial pour les sauts
+            userId: '', // Non disponible dans l'historique des mÃ©dicaments
+            createdAt: item.createdAt,
+          ));
+        }
+      }
+
+      // Combiner les deux listes
+      final combinedHistory = [...stockHistory, ...convertedHistory];
+
+      // Trier par date de crÃ©ation (du plus rÃ©cent au plus ancien)
+      combinedHistory.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      print("Historique combinÃ©: ${combinedHistory.length} entrÃ©es");
+      return combinedHistory;
+    } catch (e) {
+      print("Erreur lors de la rÃ©cupÃ©ration de l'historique complet: $e");
+      if (onError != null)
+        onError('Erreur lors de la rÃ©cupÃ©ration de l\'historique');
+      return [];
     }
   }
 }

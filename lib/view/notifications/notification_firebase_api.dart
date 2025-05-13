@@ -1,16 +1,23 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:pim/core/constants/api_constants.dart';
+import 'package:pim/main.dart'; // Ensure you have a navigatorKey setup in your main.dart
 
 class NotificationFirebaseApi {
+  static final NotificationFirebaseApi _instance =
+      NotificationFirebaseApi._internal();
+  factory NotificationFirebaseApi() => _instance;
+  NotificationFirebaseApi._internal();
+
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  List<RemoteMessage> notifications = [];
+  final List<RemoteMessage> _notifications = [];
+  bool _isInitialized = false;
 
   Future<String?> getFcmToken() async {
     try {
@@ -21,15 +28,12 @@ class NotificationFirebaseApi {
     }
   }
 
-  Future<void> initNotifications(String fullName, String historiqueId) async {
-    // Request notification permissions
-    await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+  Future<void> initNotifications(String authId, String historiqueId) async {
+    if (_isInitialized) return;
+    _isInitialized = true;
 
-    // Check authorization status
+    await _firebaseMessaging.requestPermission(
+        alert: true, badge: true, sound: true);
     final settings = await _firebaseMessaging.getNotificationSettings();
     print("📜 Notification settings: $settings");
 
@@ -37,10 +41,9 @@ class NotificationFirebaseApi {
       String? fcmToken;
       try {
         if (Platform.isIOS) {
-          // Wait for APNs token with a timeout
-          String? apnsToken;
           const maxRetries = 10;
           const retryDelay = Duration(seconds: 1);
+          String? apnsToken;
           for (int i = 0; i < maxRetries; i++) {
             apnsToken = await _firebaseMessaging.getAPNSToken();
             if (apnsToken != null) {
@@ -55,63 +58,86 @@ class NotificationFirebaseApi {
             return;
           }
         }
+
         fcmToken = await getFcmToken();
         print("✅ FCM Token: $fcmToken");
 
         if (fcmToken != null) {
-          await sendFcmTokenToBackend(fullName, fcmToken);
-          await sendAuthFcmTokenToBackend(fullName, fcmToken);
+          await sendFcmTokenToBackend(authId, fcmToken);
+          await sendAuthFcmTokenToBackend(authId, fcmToken);
           await sendBodyFcmTokenToBackend(historiqueId, fcmToken);
         }
+
+        FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+          print("🔄 Refreshed FCM Token: $newToken");
+          await sendFcmTokenToBackend(authId, newToken);
+          await sendAuthFcmTokenToBackend(authId, newToken);
+          await sendBodyFcmTokenToBackend(historiqueId, newToken);
+        });
       } catch (e) {
         print("❌ Error initializing notifications: $e");
       }
-
-      // Handle token refresh
-      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-        print("🔄 Refreshed FCM Token: $newToken");
-        await sendFcmTokenToBackend(fullName, newToken);
-        await sendAuthFcmTokenToBackend(fullName, newToken);
-        await sendBodyFcmTokenToBackend(historiqueId, newToken);
-      });
     } else {
       print("❌ Notifications not authorized.");
     }
 
-    // Initialize local notifications
-    const AndroidInitializationSettings initializationSettingsAndroid =
+    await _setupInteractionHandlers();
+    await _initializeLocalNotifications();
+    _listenToForegroundMessages();
+  }
+
+  Future<void> _initializeLocalNotifications() async {
+    const AndroidInitializationSettings androidInitSettings =
         AndroidInitializationSettings('@drawable/ms_logo');
 
-    final DarwinInitializationSettings initializationSettingsIOS =
+    final DarwinInitializationSettings iosInitSettings =
         DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    final InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
+    final InitializationSettings initSettings = InitializationSettings(
+      android: androidInitSettings,
+      iOS: iosInitSettings,
     );
 
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await _flutterLocalNotificationsPlugin.initialize(initSettings);
+  }
 
-    // Handle foreground messages
+  void _listenToForegroundMessages() {
     FirebaseMessaging.onMessage.listen((message) async {
-      print("🔔 New notification received: ${message.notification?.body}");
-      print("🕒 Received at: ${DateTime.now()}");
+      final title = message.notification?.title ?? "";
+      final body = message.notification?.body ?? "";
+      final data = message.data;
+      final screen =
+          data['screen']; // Extract the screen name from the notification data
 
-      await _showNotification(
-        message.notification?.title,
-        message.notification?.body,
-      );
+      print("🔔 Foreground Notification: $title - $body");
 
-      notifications.add(message);
+      bool isDuplicate = _notifications.any((existing) =>
+          (existing.data['messageId'] == data['messageId'] &&
+              data['messageId'].isNotEmpty) ||
+          (existing.notification?.title == title &&
+              existing.notification?.body == body &&
+              DateTime.now()
+                      .difference(existing.sentTime ?? DateTime.now())
+                      .inMinutes <
+                  5));
+
+      if (!isDuplicate) {
+        _notifications.add(message);
+        await _showNotification(title, body, screen);
+      } else {
+        print("⛔️ Duplicate notification ignored.");
+      }
     });
   }
 
-  Future<void> _showNotification(String? title, String? body) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+  Future<void> _showNotification(
+      String? title, String? body, String? screen) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'pim-msaware',
       'PIM-MSAware',
       importance: Importance.high,
@@ -119,8 +145,10 @@ class NotificationFirebaseApi {
       icon: 'ms_logo',
     );
 
+const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
     const NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
+      iOS: iosDetails,
     );
 
     int uniqueId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
@@ -130,53 +158,56 @@ class NotificationFirebaseApi {
       title,
       body,
       platformDetails,
-      payload: 'notification_payload_$uniqueId',
+      payload:
+          jsonEncode({'screen': screen}), // Pass the screen name in the payload
     );
   }
 
-  // Appointment Notifications
-  Future<void> sendFcmTokenToBackend(String fullName, String fcmToken) async {
+  Future<void> _setupInteractionHandlers() async {
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNavigation);
+
+    RemoteMessage? initialMessage =
+        await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      _handleNavigation(initialMessage);
+    }
+  }
+
+  void _handleNavigation(RemoteMessage message) {
+    final screen = message.data['screen'];
+    print("🔗 Navigating to screen: $screen");
+
+    if (screen != null) {
+      navigatorKey.currentState
+          ?.pushNamed('/$screen'); // Navigate to the specified screen
+    }
+  }
+
+  Future<void> sendFcmTokenToBackend(String userId, String fcmToken) async {
     final url = Uri.parse(ApiConstants.updateFcmTokenEndpoint);
-    try {
-      final response = await http.put(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"fullName": fullName, "fcmToken": fcmToken}),
-      );
-      print("📤 Sent appointement FCM token to backend: ${response.statusCode}");
-    } catch (e) {
-      print("❌ Error sending FCM token to backend: $e");
-    }
+    await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"userId": userId, "fcmToken": fcmToken}),
+    );
   }
 
-
-  // Quiz Event Notifications
-  Future<void> sendAuthFcmTokenToBackend(String fullName, String fcmToken) async {
+  Future<void> sendAuthFcmTokenToBackend(
+      String fullName, String fcmToken) async {
     final url = Uri.parse(ApiConstants.updateAuthFcmTokenEndpoint);
-    try {
-      final response = await http.put(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"fullName": fullName, "fcmToken": fcmToken}),
-      );
-      print("📤 Sent auth FCM token to backend: ${response.statusCode}");
-    } catch (e) {
-      print("❌ Error sending auth FCM token to backend: $e");
-    }
+    await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"fullName": fullName, "fcmToken": fcmToken}),
+    );
   }
 
-  // Body Alert Notifications
-  Future<void> sendBodyFcmTokenToBackend(String historiqueId, String fcmToken) async {
+  Future<void> sendBodyFcmTokenToBackend(String authId, String fcmToken) async {
     final url = Uri.parse(ApiConstants.updateHistoriqueFcmTokenEndpoint);
-    try {
-      final response = await http.put(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"historiqueId": historiqueId, "fcmToken": fcmToken}),
-      );
-      print("📤 Sent body FCM token to backend: ${response.statusCode}");
-    } catch (e) {
-      print("❌ Error sending body FCM token to backend: $e");
-    }
+    await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"authId": authId, "fcmToken": fcmToken}),
+    );
   }
 }

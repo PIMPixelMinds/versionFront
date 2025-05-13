@@ -384,7 +384,7 @@ class _HealthGroupedPageState extends State<HealthGroupedPage> {
       child: ClipRRect(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         child: Image.network(
-          "http://172.205.131.226:3000$imagePath",
+          "http://172.20.10.3:3000$imagePath",
           width: 250,
           height: 250,
           errorBuilder: (context, error, stackTrace) => Container(

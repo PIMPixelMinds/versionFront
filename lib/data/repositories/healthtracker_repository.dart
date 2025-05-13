@@ -17,11 +17,10 @@ class HealthTrackerRepository {
     };
   }
 
-   Map<String, String> _getHeadersSync(String? token) => {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
+  Map<String, String> _getHeadersSync(String? token) => {
+    'Content-Type': 'application/json',
+    if (token != null) 'Authorization': 'Bearer $token',
+  };
 
 Future<List<Map<String, dynamic>>> getActivities({required String lang}) async {
   final url = Uri.parse(ApiConstants.fetchActivitiesEndpoint);
@@ -29,19 +28,19 @@ Future<List<Map<String, dynamic>>> getActivities({required String lang}) async {
 
   if (response.statusCode == 200) {
     final List<dynamic> raw = json.decode(response.body);
-    print("📡 Raw response body: $raw");
+    print("ðŸ“¡ Raw response body: $raw");
     
     final localized = raw.map<Map<String, dynamic>>((item) {
       final translations = item['translations'] ?? {};
       final selected = translations[lang] ?? translations['en'] ?? {};
-      print("🌍 Using language code: $lang");
+      print("ðŸŒ Using language code: $lang");
       return {
         'activity': selected['activity'] ?? '',
         'description': selected['description'] ?? '',
       };
     }).toList();
 
-    print("✅ Activities for $lang: $localized");
+    print("âœ… Activities for $lang: $localized");
     return localized;
   } else {
     throw Exception('Failed to load activities');
@@ -120,84 +119,44 @@ Future<List<Map<String, dynamic>>> getActivities({required String lang}) async {
     }
   }
 
-  //UPDATE getMedicationStats
-
   Future<Map<String, dynamic>> getMedicationStats() async {
     try {
       final token = await _getToken();
       if (token == null) throw Exception('User not authenticated');
 
-      // 1. D'abord, récupérer tous les médicaments
-      final medicationsUrl = Uri.parse(ApiConstants.getMedicationsEndpoint);
-      final medicationsResponse =
-          await http.get(medicationsUrl, headers: _getHeadersSync(token));
+      final url = Uri.parse(ApiConstants.getTodayRemindersEndpoint);
+      final response = await http.get(url, headers: _getHeadersSync(token));
 
-      if (medicationsResponse.statusCode != 200) {
-        throw Exception('Failed to load medications');
-      }
+      if (response.statusCode == 200) {
+        final List<dynamic> reminders = json.decode(response.body);
 
-      final List<dynamic> medications = json.decode(medicationsResponse.body);
+        int takenCount = 0;
+        int pendingCount = 0;
+        int skippedCount = 0;
 
-      if (medications.isEmpty) {
-        return {
-          'takenCount': 0,
-          'pendingCount': 0,
-          'skippedCount': 0,
-          'total': 0,
-          'adherenceRate': 0,
-          'pendingRate': 0,
-          'skippedRate': 0,
-        };
-      }
-
-      // 2. Récupérer les rappels d'aujourd'hui pour les médicaments en attente
-      final remindersUrl = Uri.parse(ApiConstants.getTodayRemindersEndpoint);
-      final remindersResponse =
-          await http.get(remindersUrl, headers: _getHeadersSync(token));
-
-      if (remindersResponse.statusCode != 200) {
-        throw Exception('Failed to load today reminders');
-      }
-
-      final List<dynamic> todayReminders = json.decode(remindersResponse.body);
-
-      // 3. Calculer les statistiques globales
-      int totalTaken = 0;
-      int totalSkipped = 0;
-      int totalPending = todayReminders
-          .where((reminder) =>
-              reminder['isCompleted'] != true && reminder['isSkipped'] != true)
-          .length;
-
-      // Pour chaque médicament, récupérer son historique
-      for (var medication in medications) {
-        final String medicationId = medication['_id'];
-        final historyUrl = Uri.parse(
-            '${ApiConstants.getMedicationHistoryEndpoint}/$medicationId/history');
-        final historyResponse =
-            await http.get(historyUrl, headers: _getHeadersSync(token));
-
-        if (historyResponse.statusCode == 200) {
-          final List<dynamic> history = json.decode(historyResponse.body);
-
-          // Compter les prises et les sauts
-          totalTaken += history.where((item) => item['skipped'] != true).length;
-          totalSkipped +=
-              history.where((item) => item['skipped'] == true).length;
+        for (var reminder in reminders) {
+          if (reminder['isCompleted'] == true) {
+            takenCount++;
+          } else if (reminder['isSkipped'] == true) {
+            skippedCount++;
+          } else {
+            pendingCount++;
+          }
         }
+
+        final total = takenCount + pendingCount + skippedCount;
+        return {
+          'takenCount': takenCount,
+          'pendingCount': pendingCount,
+          'skippedCount': skippedCount,
+          'total': total,
+          'adherenceRate': total > 0 ? (takenCount / total) * 100 : 0,
+          'pendingRate': total > 0 ? (pendingCount / total) * 100 : 0,
+          'skippedRate': total > 0 ? (skippedCount / total) * 100 : 0,
+        };
+      } else {
+        throw Exception('Failed to load medication stats');
       }
-
-      final int totalEvents = totalTaken + totalSkipped + totalPending;
-
-      return {
-        'takenCount': totalTaken,
-        'pendingCount': totalPending,
-        'skippedCount': totalSkipped,
-        'total': totalEvents,
-        'adherenceRate': totalEvents > 0 ? (totalTaken / totalEvents) * 100 : 0,
-        'pendingRate': totalEvents > 0 ? (totalPending / totalEvents) * 100 : 0,
-        'skippedRate': totalEvents > 0 ? (totalSkipped / totalEvents) * 100 : 0,
-      };
     } catch (e) {
       print('Error fetching medication stats: $e');
       return {
@@ -211,5 +170,17 @@ Future<List<Map<String, dynamic>>> getActivities({required String lang}) async {
       };
     }
   }
+ Future<Map<String, dynamic>> predictNextRelapse() async {
+  final url = Uri.parse(ApiConstants.predictRelapseEndpoint);
+  final response = await http.post(url, headers: await _buildHeaders());
+
+  if (response.statusCode == 200) {
+    // 👌 Retourne la prédiction directement
+    return json.decode(response.body);
+  } else {
+    // ❌ Même si c’est un JSON valide, on le jette en string
+    throw Exception(response.body);
+  }
+}
 
 }

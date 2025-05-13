@@ -7,12 +7,11 @@ import '../model/medication_models.dart';
 import 'shared_prefs_service.dart';
 
 class MedicationRepository {
-   final SharedPrefsService _prefsService = SharedPrefsService();
+  final SharedPrefsService _prefsService = SharedPrefsService();
 
   Future<String?> _getToken() async {
     return await _prefsService.getAccessToken();
   }
-
 
   Future<List<Medication>> getMedications() async {
     final token = await _getToken();
@@ -35,7 +34,8 @@ class MedicationRepository {
     _checkResponse(response);
 
     final dynamic decoded = json.decode(response.body);
-    final List<dynamic> data = decoded is List ? decoded : decoded['data'] ?? [];
+    final List<dynamic> data =
+        decoded is List ? decoded : decoded['data'] ?? [];
     return data.map((e) => MedicationReminder.fromJson(e)).toList();
   }
 
@@ -43,108 +43,115 @@ class MedicationRepository {
     final token = await _getToken();
     _ensureAuthenticated(token);
     final dateString = date.toIso8601String().substring(0, 10);
-    final url = Uri.parse('${ApiConstants.getRemindersForDateEndpoint}?date=$dateString');
+    final url = Uri.parse(
+        '${ApiConstants.getRemindersForDateEndpoint}?date=$dateString');
 
     final response = await http.get(url, headers: _headers(token));
     _checkResponse(response);
 
     final dynamic decoded = json.decode(response.body);
-    final List<dynamic> data = decoded is List ? decoded : decoded['data'] ?? [];
+    final List<dynamic> data =
+        decoded is List ? decoded : decoded['data'] ?? [];
     return data.map((e) => MedicationReminder.fromJson(e)).toList();
   }
 
- Future<Medication> addMedication(Map<String, dynamic> medicationData, {File? imageFile}) async {
-  final token = await _getToken();
-  _ensureAuthenticated(token);
+  Future<Medication> addMedication(Map<String, dynamic> medicationData,
+      {File? imageFile}) async {
+    final token = await _getToken();
+    _ensureAuthenticated(token);
 
-  if (imageFile != null) {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse(ApiConstants.addMedicationEndpoint),
-    )..headers['Authorization'] = 'Bearer $token';
+    if (imageFile != null) {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse(ApiConstants.addMedicationEndpoint),
+      )..headers['Authorization'] = 'Bearer $token';
 
-    // ✅ Proper handling of lists like timeOfDay
-    medicationData.forEach((key, value) {
-      if (value == null) return;
+      // Ã¢Å“â€¦ Proper handling of lists like timeOfDay
+      medicationData.forEach((key, value) {
+        if (value == null) return;
 
-      if (value is List) {
-        for (var i = 0; i < value.length; i++) {
-          request.fields['$key[$i]'] = value[i].toString();
+        if (value is List) {
+          for (var i = 0; i < value.length; i++) {
+            request.fields['$key[$i]'] = value[i].toString();
+          }
+        } else {
+          request.fields[key] = value.toString();
         }
-      } else {
-        request.fields[key] = value.toString();
-      }
-    });
+      });
 
-    request.files.add(await http.MultipartFile.fromPath(
-      'medicationImage',
-      imageFile.path,
-    ));
+      request.files.add(await http.MultipartFile.fromPath(
+        'medicationImage',
+        imageFile.path,
+      ));
 
-    final streamed = await request.send();
-    final response = await http.Response.fromStream(streamed);
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
 
-    _checkResponse(response, expected: 201);
-    return Medication.fromJson(json.decode(response.body));
-  } else {
-    final response = await http.post(
-      Uri.parse(ApiConstants.addMedicationEndpoint),
-      headers: _headers(token),
-      body: json.encode(medicationData),
-    );
-    _checkResponse(response, expected: 201);
-    return Medication.fromJson(json.decode(response.body));
-  }
-}
-Future<Medication> updateMedication(String id, Map<String, dynamic> data, {File? imageFile}) async {
-  final token = await _getToken();
-  _ensureAuthenticated(token);
-
-  // Handle optional reminder deletion
-  if (data.remove('deleteAllReminders') == true) {
-    final deleteUrl = Uri.parse('${ApiConstants.updateMedicationEndpoint}/$id/delete-reminders');
-    await http.post(deleteUrl, headers: _headers(token));
+      _checkResponse(response, expected: 201);
+      return Medication.fromJson(json.decode(response.body));
+    } else {
+      final response = await http.post(
+        Uri.parse(ApiConstants.addMedicationEndpoint),
+        headers: _headers(token),
+        body: json.encode(medicationData),
+      );
+      _checkResponse(response, expected: 201);
+      return Medication.fromJson(json.decode(response.body));
+    }
   }
 
-  if (imageFile != null) {
-    final request = http.MultipartRequest(
-      'PATCH',
-      Uri.parse('${ApiConstants.updateMedicationEndpoint}/$id'),
-    )..headers['Authorization'] = 'Bearer $token';
+  Future<Medication> updateMedication(String id, Map<String, dynamic> data,
+      {File? imageFile}) async {
+    final token = await _getToken();
+    _ensureAuthenticated(token);
 
-    // ✅ Proper handling of lists (e.g., timeOfDay, specificDays)
-    data.forEach((key, value) {
-      if (value == null) return;
+    // Handle optional reminder deletion
+    if (data.remove('deleteAllReminders') == true) {
+      final deleteUrl = Uri.parse(
+          '${ApiConstants.updateMedicationEndpoint}/$id/delete-reminders');
+      await http.post(deleteUrl, headers: _headers(token));
+    }
 
-      if (value is List) {
-        for (var i = 0; i < value.length; i++) {
-          request.fields['$key[$i]'] = value[i].toString();
+    if (imageFile != null) {
+      final request = http.MultipartRequest(
+        'PATCH',
+        Uri.parse('${ApiConstants.updateMedicationEndpoint}/$id'),
+      )..headers['Authorization'] = 'Bearer $token';
+
+      // Ã¢Å“â€¦ Proper handling of lists (e.g., timeOfDay, specificDays)
+      data.forEach((key, value) {
+        if (value == null) return;
+
+        if (value is List) {
+          for (var i = 0; i < value.length; i++) {
+            request.fields['$key[$i]'] = value[i].toString();
+          }
+        } else {
+          request.fields[key] = value.toString();
         }
-      } else {
-        request.fields[key] = value.toString();
-      }
-    });
+      });
 
-    // Add image
-    request.files.add(await http.MultipartFile.fromPath('medicationImage', imageFile.path));
+      // Add image
+      request.files.add(
+          await http.MultipartFile.fromPath('medicationImage', imageFile.path));
 
-    final streamed = await request.send();
-    final response = await http.Response.fromStream(streamed);
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
 
-    _checkResponse(response);
-    return Medication.fromJson(json.decode(response.body));
-  } else {
-    // JSON body (no file)
-    final response = await http.patch(
-      Uri.parse('${ApiConstants.updateMedicationEndpoint}/$id'),
-      headers: _headers(token),
-      body: json.encode(data),
-    );
+      _checkResponse(response);
+      return Medication.fromJson(json.decode(response.body));
+    } else {
+      // JSON body (no file)
+      final response = await http.patch(
+        Uri.parse('${ApiConstants.updateMedicationEndpoint}/$id'),
+        headers: _headers(token),
+        body: json.encode(data),
+      );
 
-    _checkResponse(response);
-    return Medication.fromJson(json.decode(response.body));
+      _checkResponse(response);
+      return Medication.fromJson(json.decode(response.body));
+    }
   }
-}
 
   Future<bool> deleteMedication(String id) async {
     final token = await _getToken();
@@ -168,7 +175,8 @@ Future<Medication> updateMedication(String id, Map<String, dynamic> data, {File?
     return Medication.fromJson(json.decode(response.body));
   }
 
-  Future<MedicationReminder> takeMedication(String id, TakeMedicationDto dto, {File? imageFile}) async {
+  Future<MedicationReminder> takeMedication(String id, TakeMedicationDto dto,
+      {File? imageFile}) async {
     final token = await _getToken();
     _ensureAuthenticated(token);
     final url = Uri.parse('${ApiConstants.takeMedicationEndpoint}/$id/take');
@@ -176,11 +184,16 @@ Future<Medication> updateMedication(String id, Map<String, dynamic> data, {File?
     if (imageFile != null) {
       final request = http.MultipartRequest('POST', url)
         ..headers['Authorization'] = 'Bearer $token'
-        ..fields['takenAt'] = dto.takenAt.toIso8601String();
+        ..fields['takenAt'] = dto.takenAt.toIso8601String()
+        ..fields['scheduledTime'] =
+            dto.scheduledTime ?? ''; // Add scheduledTime
 
-      if (dto.quantityTaken != null) request.fields['quantityTaken'] = dto.quantityTaken.toString();
+      if (dto.quantityTaken != null)
+        request.fields['quantityTaken'] = dto.quantityTaken.toString();
       if (dto.notes != null) request.fields['notes'] = dto.notes!;
-      request.files.add(await http.MultipartFile.fromPath('medicationImage', imageFile.path));
+
+      request.files.add(
+          await http.MultipartFile.fromPath('medicationImage', imageFile.path));
 
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
@@ -190,36 +203,43 @@ Future<Medication> updateMedication(String id, Map<String, dynamic> data, {File?
       final response = await http.post(
         url,
         headers: _headers(token),
-        body: json.encode(dto.toJson()),
+        body: json
+            .encode(dto.toJson()), // Already includes scheduledTime via toJson
       );
       _checkResponse(response);
       return MedicationReminder.fromJson(json.decode(response.body));
     }
   }
 
-  Future<MedicationReminder> skipMedication(String id, DateTime date, String time) async {
+  Future<MedicationReminder> skipMedication(
+      String id, DateTime date, String time) async {
     final token = await _getToken();
     _ensureAuthenticated(token);
     final url = Uri.parse('${ApiConstants.skipMedicationEndpoint}/$id/skip');
     final response = await http.post(
       url,
       headers: _headers(token),
-      body: json.encode({'scheduledDate': date.toIso8601String(), 'scheduledTime': time}),
+      body: json.encode(
+          {'scheduledDate': date.toIso8601String(), 'scheduledTime': time}),
     );
     _checkResponse(response);
     return MedicationReminder.fromJson(json.decode(response.body));
   }
 
-  Future<List<MedicationHistory>> getMedicationHistory(String id, {DateTime? startDate, DateTime? endDate}) async {
+  Future<List<MedicationHistory>> getMedicationHistory(String id,
+      {DateTime? startDate, DateTime? endDate}) async {
     final token = await _getToken();
     _ensureAuthenticated(token);
     final query = {
       if (startDate != null) 'startDate': startDate.toIso8601String(),
       if (endDate != null) 'endDate': endDate.toIso8601String(),
     };
-    final uri = Uri.parse('${ApiConstants.getMedicationHistoryEndpoint}/$id/history').replace(queryParameters: query);
+    final uri =
+        Uri.parse('${ApiConstants.getMedicationHistoryEndpoint}/$id/history')
+            .replace(queryParameters: query);
     final response = await http.get(uri, headers: _headers(token));
     _checkResponse(response);
+    print('History API Response: ${response.body}'); // Debug log
     final data = json.decode(response.body) as List;
     return data.map((e) => MedicationHistory.fromJson(e)).toList();
   }
@@ -227,11 +247,39 @@ Future<Medication> updateMedication(String id, Map<String, dynamic> data, {File?
   Future<List<StockHistory>> fetchStockHistory(String id) async {
     final token = await _getToken();
     _ensureAuthenticated(token);
-    final url = Uri.parse(ApiConstants.medicationStockHistoryEndpoint.replaceAll('{id}', id));
-    final response = await http.get(url, headers: _headers(token));
-    _checkResponse(response);
-    final data = json.decode(response.body) as List;
-    return data.map((e) => StockHistory.fromJson(e)).toList();
+    try {
+      final url = Uri.parse(
+          ApiConstants.medicationStockHistoryEndpoint.replaceAll('{id}', id));
+      print("RequÃªte d'historique de stock pour l'ID: $id");
+      print("URL: $url");
+
+      final response = await http.get(url, headers: _headers(token));
+      print("Code de rÃ©ponse: ${response.statusCode}");
+      print("RÃ©ponse brute: ${response.body}");
+
+      _checkResponse(response);
+
+      if (response.body.isEmpty) {
+        print("RÃ©ponse vide reÃ§ue de l'API");
+        return [];
+      }
+
+      final data = json.decode(response.body) as List;
+      print("DonnÃ©es dÃ©codÃ©es: $data");
+
+      if (data.isEmpty) {
+        print("Aucune donnÃ©e d'historique de stock trouvÃ©e");
+        return [];
+      }
+
+      final result = data.map((e) => StockHistory.fromJson(e)).toList();
+      print("Historique de stock converti: ${result.length} entrÃ©es");
+      return result;
+    } catch (e) {
+      print("Erreur lors de la rÃ©cupÃ©ration de l'historique de stock: $e");
+      // Renvoyer une liste vide au lieu de propager l'erreur
+      return [];
+    }
   }
 
   Future<void> updateStock({
@@ -243,13 +291,15 @@ Future<Medication> updateMedication(String id, Map<String, dynamic> data, {File?
   }) async {
     token ??= await _getToken();
     _ensureAuthenticated(token);
-    final url = Uri.parse(ApiConstants.medicationUpdateStockEndpoint.replaceAll('{id}', medicationId));
+    final url = Uri.parse(ApiConstants.medicationUpdateStockEndpoint
+        .replaceAll('{id}', medicationId));
     final body = json.encode({
       'quantity': quantity,
       if (lowStockThreshold != null) 'lowStockThreshold': lowStockThreshold,
       if (notes != null) 'notes': notes,
     });
-    final response = await http.patch(url, headers: _headers(token), body: body);
+    final response =
+        await http.patch(url, headers: _headers(token), body: body);
     _checkResponse(response);
   }
 
@@ -261,7 +311,8 @@ Future<Medication> updateMedication(String id, Map<String, dynamic> data, {File?
   }) async {
     token ??= await _getToken();
     _ensureAuthenticated(token);
-    final url = Uri.parse(ApiConstants.medicationAddStockEndpoint.replaceAll('{id}', medicationId));
+    final url = Uri.parse(ApiConstants.medicationAddStockEndpoint
+        .replaceAll('{id}', medicationId));
     final body = json.encode({
       'quantity': quantity,
       if (notes != null) 'notes': notes,
@@ -277,9 +328,9 @@ Future<Medication> updateMedication(String id, Map<String, dynamic> data, {File?
   }
 
   Map<String, String> _headers(String? token) => {
-    'Content-Type': 'application/json',
-    if (token != null) 'Authorization': 'Bearer $token',
-  };
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
 
   void _ensureAuthenticated(String? token) {
     if (token == null) throw Exception('User not authenticated');
@@ -290,6 +341,4 @@ Future<Medication> updateMedication(String id, Map<String, dynamic> data, {File?
       throw Exception('API Error ${response.statusCode}: ${response.body}');
     }
   }
-
-  
 }

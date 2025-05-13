@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pim/core/constants/app_colors.dart';
 import 'package:pim/viewmodel/healthTracker_viewmodel.dart';
 
 class MSNQTestPage extends StatefulWidget {
@@ -37,7 +39,9 @@ class _MSNQTestPageState extends State<MSNQTestPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading test: $e')),
+          SnackBar(
+  content: Text(AppLocalizations.of(context)!.loadingError(e.toString())),
+)
         );
       }
     } finally {
@@ -52,24 +56,23 @@ class _MSNQTestPageState extends State<MSNQTestPage> {
 
     setState(() => _isSubmitting = true);
     final viewModel = Provider.of<HealthTrackerViewModel>(context, listen: false);
+    final localizations = AppLocalizations.of(context)!;
 
     try {
       if (_answers.length != viewModel.questions.length) {
-        throw Exception('Please answer all questions before submitting.');
+        throw Exception(localizations.completeAllQuestions);
       }
 
-      final formattedAnswers = _answers.entries.map((entry) {
-        return {
-          'questionId': entry.key,
-          'answer': entry.value ? 'Yes' : 'No',
-        };
-      }).toList();
+      final formattedAnswers = _answers.entries.map((entry) => {
+            'questionId': entry.key,
+            'answer': entry.value ? 'Yes' : 'No',
+          }).toList();
 
-      viewModel.answers = Map.fromEntries(formattedAnswers.map((e) => MapEntry(e['questionId']!, e['answer'] == 'Yes')));
+      viewModel.answers = Map.fromEntries(
+        formattedAnswers.map((e) => MapEntry(e['questionId']!, e['answer'] == 'Yes')),
+      );
 
       await viewModel.submitQuestionnaire(context);
-
-      // 🛠 VERY IMPORTANT: Force refresh lock status
       await viewModel.checkQuestionnaireAvailability();
 
       if (onComplete != null) {
@@ -78,7 +81,7 @@ class _MSNQTestPageState extends State<MSNQTestPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Answers submitted successfully.")),
+          SnackBar(content: Text(localizations.submitSuccess)),
         );
 
         await Future.delayed(const Duration(milliseconds: 300));
@@ -87,7 +90,7 @@ class _MSNQTestPageState extends State<MSNQTestPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit: ${e.toString()}')),
+          SnackBar(content: Text('${localizations.submitFailed}: ${e.toString()}')),
         );
       }
     } finally {
@@ -95,19 +98,18 @@ class _MSNQTestPageState extends State<MSNQTestPage> {
         setState(() => _isSubmitting = false);
       }
     }
-    print('✅ After submitting test - isTestLocked=${viewModel.isTestLocked}');
-    print('✅ After submitting test - nextAvailableDate=${viewModel.nextAvailableDate}');
-
   }
-
 
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<HealthTrackerViewModel>(context);
+    final localizations = AppLocalizations.of(context)!;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MSNQ Test'),
+        title: Text(localizations.msnqTestTitle),
+        backgroundColor: AppColors.primaryBlue,
         actions: [
           if (_isSubmitting)
             const Padding(
@@ -116,11 +118,11 @@ class _MSNQTestPageState extends State<MSNQTestPage> {
             ),
         ],
       ),
-      body: _buildBody(viewModel),
+      body: _buildBody(viewModel, localizations, isDarkMode),
     );
   }
 
-  Widget _buildBody(HealthTrackerViewModel viewModel) {
+  Widget _buildBody(HealthTrackerViewModel viewModel, AppLocalizations localizations, bool isDarkMode) {
     if (_isLoading || viewModel.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -130,7 +132,7 @@ class _MSNQTestPageState extends State<MSNQTestPage> {
     }
 
     if (viewModel.questions.isEmpty) {
-      return const Center(child: Text('No questions available.'));
+      return Center(child: Text(localizations.noQuestionsAvailable));
     }
 
     return Column(
@@ -139,75 +141,86 @@ class _MSNQTestPageState extends State<MSNQTestPage> {
           child: ListView.builder(
             controller: _scrollController,
             itemCount: viewModel.questions.length,
-            itemBuilder: (context, index) => _buildQuestionItem(viewModel, index),
+            itemBuilder: (context, index) => _buildQuestionItem(viewModel, index, isDarkMode),
           ),
         ),
-        _buildSubmitButton(viewModel),
+        _buildSubmitButton(viewModel, localizations),
       ],
     );
   }
 
-  Widget _buildQuestionItem(HealthTrackerViewModel viewModel, int index) {
-    final question = viewModel.questions[index];
-    final questionId = question['_id'];
+  Widget _buildQuestionItem(HealthTrackerViewModel viewModel, int index, bool isDarkMode) {
+  final question = viewModel.questions[index];
+  final questionId = question['_id'];
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Q${index + 1}: ${question['text']}",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: RadioListTile<bool>(
-                    title: const Text('Yes'),
-                    value: true,
-                    groupValue: _answers[questionId],
-                    onChanged: (value) {
-                      setState(() => _answers[questionId] = value!);
-                    },
-                  ),
-                ),
-                Expanded(
-                  child: RadioListTile<bool>(
-                    title: const Text('No'),
-                    value: false,
-                    groupValue: _answers[questionId],
-                    onChanged: (value) {
-                      setState(() => _answers[questionId] = value!);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubmitButton(HealthTrackerViewModel viewModel) {
-    final isReadyToSubmit = _answers.length == viewModel.questions.length && !_isSubmitting;
-
-    return Padding(
+  return Card(
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
+    ),
+    elevation: 0,
+    color: Theme.of(context).cardColor,
+    child: Padding(
       padding: const EdgeInsets.all(16.0),
-      child: ElevatedButton(
-        onPressed: isReadyToSubmit ? _submitAnswers : null,
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size.fromHeight(50),
-          textStyle: const TextStyle(fontSize: 18),
-        ),
-        child: const Text('Submit Answers'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Q${index + 1}: ${question['text']}",
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: Text(AppLocalizations.of(context)!.yes),
+                  value: true,
+                  groupValue: _answers[questionId],
+                  activeColor: AppColors.primaryBlue, // ✅ Couleur sélectionnée
+                  onChanged: (value) {
+                    setState(() => _answers[questionId] = value!);
+                  },
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: Text(AppLocalizations.of(context)!.no),
+                  value: false,
+                  groupValue: _answers[questionId],
+                  activeColor: AppColors.primaryBlue, // ✅ Couleur sélectionnée
+                  onChanged: (value) {
+                    setState(() => _answers[questionId] = value!);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+  Widget _buildSubmitButton(HealthTrackerViewModel viewModel, AppLocalizations localizations) {
+  final isReadyToSubmit = _answers.length == viewModel.questions.length && !_isSubmitting;
+
+  return Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: ElevatedButton(
+      onPressed: isReadyToSubmit ? _submitAnswers : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primaryBlue,
+        foregroundColor: Colors.white, // ✅ texte en blanc
+        minimumSize: const Size.fromHeight(50),
+        textStyle: const TextStyle(fontSize: 18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: Text(localizations.submit),
+    ),
+  );
+}
 
   @override
   void dispose() {

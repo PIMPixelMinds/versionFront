@@ -102,4 +102,22 @@ class AppointmentRepository {
     _checkResponse(response, expected: 200);
     return jsonDecode(response.body);
   }
+
+  Future<String> getMyAppointmentUserId() async {
+    final token = await _getToken();
+    _ensureAuthenticated(token);
+    final url = Uri.parse(ApiConstants.getMyAppointmentUserId);
+
+    final response = await http.get(
+      url,
+      headers: _headers(token),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['userId'];
+    } else {
+      throw Exception('Failed to fetch userId');
+    }
+  }
 }

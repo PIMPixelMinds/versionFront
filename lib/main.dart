@@ -37,6 +37,7 @@ import 'view/medication/medication_detail_screen.dart';
 import 'view/medication/medication_notification_screen.dart';
 
 import 'view/notifications/notification_firebase_api.dart';
+import 'view/tracking_log/HealthTrackerPage.dart';
 import 'view/tracking_log/health_page.dart';
 
 import 'viewmodel/auth_viewmodel.dart';
@@ -71,6 +72,23 @@ Future<void> main() async {
   }
 
   await _setupNotifications();
+
+  final appointmentViewModel = AppointmentViewModel();
+  await appointmentViewModel.fetchMyAppointmentUserId();
+  final userId = appointmentViewModel.userId;
+
+  final authViewModel = AuthViewModel();
+
+  // Ensure you await the result of fetchMyUserId
+  await authViewModel.fetchMyUserId();
+
+  // Now that the async operation has completed, get the authId
+  final authId = authViewModel.authId;
+  print("authId is: $authId");
+
+  print("User Id is : $userId");
+  print("Auth ID is : $authId");
+  await NotificationFirebaseApi().initNotifications(authId.toString(), 'notif');
 
   final localeProvider = LocaleProvider();
   await localeProvider.loadLocaleFromPreferences();
@@ -137,8 +155,8 @@ Future<void> _setupNotifications() async {
   await flutterLocalNotificationsPlugin.initialize(initSettings);
 
   // 🔐 Demander permission iOS
-  final iosImpl = flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
+  final iosImpl =
+      flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
   final granted = await iosImpl?.requestPermissions(
     alert: true,
@@ -146,8 +164,6 @@ Future<void> _setupNotifications() async {
     sound: true,
   );
   debugPrint("🔐 iOS notification permission granted: $granted");
-
-
 
   // 🔔 Foreground message handler
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -186,8 +202,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
-   
-NotificationFirebaseApi().initNotifications('temp-id', 'notif');
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -246,6 +260,7 @@ NotificationFirebaseApi().initNotifications('temp-id', 'notif');
             medicationId: ModalRoute.of(context)!.settings.arguments as String),
         '/profile': (context) => const ProfilePage(),
         '/healthPage': (context) => HealthPage(),
+        '/HealthTrack': (context) => HealthTrackerPage(),
       },
     );
   }

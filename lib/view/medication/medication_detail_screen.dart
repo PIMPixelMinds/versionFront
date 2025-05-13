@@ -141,7 +141,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
   String getMedicationImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) return '';
     if (imageUrl.startsWith('http')) return imageUrl;
-    // Corrige les Ã©ventuels / en double
+    // Corrige les ÃƒÆ’Ã‚Â©ventuels / en double
     return '${ApiConstants.baseUrl}/${imageUrl.replaceFirst(RegExp(r'^/+'), '')}';
   }
 
@@ -149,7 +149,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
     try {
       return Color(int.parse(colorString.replaceFirst('#', '0xff')));
     } catch (_) {
-      return AppColors.primaryBlue; // couleur fallback
+      return Colors.blue; // couleur fallback
     }
   }
 
@@ -240,7 +240,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
                           .antiAlias, // pour respecter le borderRadius sur l'image
                       child: Stack(
                         children: [
-                          // Image en fond (arriÃ¨re-plan)
+                          // Image en fond (arriÃƒÆ’Ã‚Â¨re-plan)
                           if (medication.imageUrl != null &&
                               medication.imageUrl!.isNotEmpty)
                             Positioned.fill(
@@ -253,7 +253,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
                                 ),
                               ),
                             ),
-                          // DÃ©gradÃ© couleur PAR-DESSUS l'image
+                          // DÃƒÆ’Ã‚Â©gradÃƒÆ’Ã‚Â© couleur PAR-DESSUS l'image
                           Positioned.fill(
                             child: Container(
                               decoration: BoxDecoration(
@@ -275,7 +275,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
                               ),
                             ),
                           ),
-                          // Contenu de la card (inchangÃ©)
+                          // Contenu de la card (inchangÃƒÆ’Ã‚Â©)
                           Padding(
                             padding: const EdgeInsets.all(16),
                             child: Column(
@@ -423,72 +423,75 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
   }
 
   Widget _buildHistoryTab(MedicationViewModel viewModel, bool isDarkMode) {
-  final locale = AppLocalizations.of(context)!;
+    final localizations = AppLocalizations.of(context)!;
 
-  return Column(
-    children: [
-      Padding(
-        padding: const EdgeInsets.all(16.0),
-      ),
-      Expanded(
-        child: viewModel.medicationHistory.isEmpty
-            ? Center(
-                child: Text(
-                  locale.noHistoryFound,
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.grey[400] : Colors.grey,
+    return Column(
+      children: [
+        // Date range selector
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          // Vous pouvez ajouter ici un sÃƒÆ’Ã‚Â©lecteur de plage de dates si nÃƒÆ’Ã‚Â©cessaire
+        ),
+
+        // History list
+        Expanded(
+          child: viewModel.medicationHistory.isEmpty
+              ? Center(
+                  child: Text(
+                    'No history found for the selected date range',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey,
+                    ),
                   ),
+                )
+              : ListView.builder(
+                  itemCount: viewModel.medicationHistory.length,
+                  itemBuilder: (context, index) {
+                    final history = viewModel.medicationHistory[index];
+                    return ListTile(
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(
+                              history.skipped ? 'skipped' : 'completed'),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: _getStatusIcon(
+                              history.skipped ? 'skipped' : 'completed'),
+                        ),
+                      ),
+                      title: Text(
+                        DateFormat('EEEE, MMMM d').format(history.takenAt),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Scheduled: ${history.scheduledTime} | ${history.skipped ? 'Skipped' : 'Taken: ${DateFormat('HH:mm').format(history.takenAt.toLocal())}'}',
+                        style: TextStyle(
+                          color:
+                              isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                      ),
+                      trailing: Text(
+                        _getStatusText(
+                            history.skipped ? 'skipped' : 'completed'),
+                        style: TextStyle(
+                          color: _getStatusColor(
+                              history.skipped ? 'skipped' : 'completed'),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              )
-            : ListView.builder(
-                itemCount: viewModel.medicationHistory.length,
-                itemBuilder: (context, index) {
-                  final history = viewModel.medicationHistory[index];
-                  final statusKey = history.skipped ? 'skipped' : 'completed';
-                  final statusColor = _getStatusColor(statusKey);
-                  final statusText = statusKey == 'skipped'
-                      ? locale.skippedStatus
-                      : locale.completedStatus;
-
-                  return ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(child: _getStatusIcon(statusKey)),
-                    ),
-                    title: Text(
-                      DateFormat('EEEE, MMMM d', locale.localeName)
-                          .format(history.takenAt),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${locale.scheduledAt(history.scheduledTime)} | ${locale.takenAt(DateFormat('HH:mm').format(history.takenAt.toLocal()))}',
-                      style: TextStyle(
-                        color:
-                            isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                      ),
-                    ),
-                    trailing: Text(
-                      statusText,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  );
-                },
-              ),
-      ),
-    ],
-  );
-}
+        ),
+      ],
+    );
+  }
 
   Widget _buildStatisticsTab(
       MedicationViewModel viewModel, Medication medication, bool isDarkMode) {
@@ -503,7 +506,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Les deux cards sur la mÃªme ligne
+          // Les deux cards sur la mÃƒÆ’Ã‚Âªme ligne
           Row(
             children: [
               Expanded(
@@ -666,7 +669,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
                     localizations.onTime,
                     onTimeCount.toString(),
                     Icons.timer,
-                    AppColors.primaryBlue,
+                    Colors.blue,
                     isDarkMode,
                   ),
                   const SizedBox(width: 16),
@@ -736,7 +739,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
   Color _getMedicationColor(String type) {
     switch (type) {
       case 'pill':
-        return AppColors.primaryBlue;
+        return Colors.blue;
       case 'capsule':
         return Colors.green;
       case 'injection':
@@ -803,7 +806,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen>
           final days = medication.specificDays!
               .map((day) {
                 if (day >= 1 && day <= 7) {
-                  // Ces chaÃ®nes devraient Ã©galement Ãªtre traduites
+                  // Ces chaÃƒÆ’Ã‚Â®nes devraient ÃƒÆ’Ã‚Â©galement ÃƒÆ’Ã‚Âªtre traduites
                   final weekDays = [
                     'Monday',
                     'Tuesday',

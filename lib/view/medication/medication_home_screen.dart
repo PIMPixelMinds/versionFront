@@ -18,18 +18,15 @@ class MedicationHomeScreen extends StatefulWidget {
 
 class _MedicationHomeScreenState extends State<MedicationHomeScreen> {
   DateTime selectedDate = DateTime.now();
-  List<String> getTranslatedWeekDays(BuildContext context) {
-  final locale = AppLocalizations.of(context)!;
-  return [
-    locale.sunShort,
-    locale.monShort,
-    locale.tueShort,
-    locale.wedShort,
-    locale.thuShort,
-    locale.friShort,
-    locale.satShort,
+  final List<String> weekDays = [
+    'Sun',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat'
   ];
-}
 
   Future<void> _loadRemindersForDate(DateTime date) async {
     final viewModel = Provider.of<MedicationViewModel>(context, listen: false);
@@ -81,67 +78,23 @@ class _MedicationHomeScreenState extends State<MedicationHomeScreen> {
     final viewModel = Provider.of<MedicationViewModel>(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
-final weekDays = getTranslatedWeekDays(context);
 
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
-  backgroundColor: isDarkMode ? Colors.black : Colors.white,
-  elevation: 0,
-  centerTitle: true,
-  title: Text(
-    localizations.medications,
-    style: TextStyle(
-      fontSize: 20,
-      fontWeight: FontWeight.bold,
-      color: isDarkMode ? Colors.white : Colors.black,
-    ),
-  ),
-  actions: [
-    Padding(
-      padding: const EdgeInsets.only(right: 12), // espace à droite
-      child: Stack(
-        children: [
-          IconButton(
-            icon: Icon(
-              Icons.library_books_outlined,
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        elevation: 0,
+        title: Center(
+          child: Text(
+            localizations.medications,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
               color: isDarkMode ? Colors.white : Colors.black,
-              size: 28, // facultatif : agrandir l'icône
             ),
-            onPressed: () {
-              Navigator.pushNamed(context, '/medication_notifications');
-            },
           ),
-          if (viewModel.todayReminders.isNotEmpty)
-            Positioned(
-              right: 6,
-              top: 6,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlue,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 18,
-                  minHeight: 18,
-                ),
-                child: Text(
-                  '+${viewModel.todayReminders.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-        ],
+        ),
       ),
-    ),
-  ],
-),
       body: viewModel.isLoading
           ? Center(
               child: CircularProgressIndicator(
@@ -167,14 +120,13 @@ final weekDays = getTranslatedWeekDays(context);
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-  DateFormat('MMMM yyyy', Localizations.localeOf(context).languageCode)
-      .format(selectedDate),
-  style: TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-    color: isDarkMode ? Colors.white : Colors.black,
-  ),
-),
+                            DateFormat('MMMM yyyy').format(selectedDate),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
                           Row(
                             children: [
                               IconButton(
@@ -257,8 +209,49 @@ final weekDays = getTranslatedWeekDays(context);
                                   }
                                 },
                               ),
-                              
-                
+                              // IcÃƒÆ’Ã‚Â´ne avec compteur de notifications
+                              Stack(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.library_books_outlined,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pushNamed(
+                                          context, '/medication_notifications');
+                                    },
+                                  ),
+                                  if (viewModel.todayReminders.isNotEmpty)
+                                    Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 18,
+                                          minHeight: 18,
+                                        ),
+                                        child: Text(
+                                          '+${viewModel.todayReminders.length}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ],
                           ),
                         ],
@@ -322,16 +315,16 @@ final weekDays = getTranslatedWeekDays(context);
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-  weekDays[date.weekday % 7],
-  style: TextStyle(
-    fontSize: 14,
-    color: isSelected
-        ? Colors.white
-        : isDarkMode
-            ? Colors.white70
-            : Colors.black54,
-  ),
-),
+                                      weekDays[date.weekday % 7],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black54,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -384,13 +377,13 @@ final weekDays = getTranslatedWeekDays(context);
                               ),
                             )
                           : SizedBox(
-                              height: 170,
+                              height: 150,
                               child: ListView.builder(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: viewModel.medications.length +
                                     1, // +1 pour la carte d'ajout
                                 itemBuilder: (context, index) {
-                                  // Si c'est le dernier Ã©lÃ©ment, montrer la carte d'ajout
+                                  // Si c'est le dernier ÃƒÆ’Ã‚Â©lÃƒÆ’Ã‚Â©ment, montrer la carte d'ajout
                                   if (index == viewModel.medications.length) {
                                     return Padding(
                                       padding:
@@ -409,7 +402,7 @@ final weekDays = getTranslatedWeekDays(context);
                                     );
                                   }
 
-                                  // Sinon afficher la mÃ©dication normale
+                                  // Sinon afficher la mÃƒÆ’Ã‚Â©dication normale
                                   final medication =
                                       viewModel.medications[index];
                                   return Padding(
@@ -497,7 +490,7 @@ final weekDays = getTranslatedWeekDays(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
 
-    // Animation controllers locaux Ã  la card
+    // Animation controllers locaux ÃƒÆ’  la card
     final slideController = ValueNotifier<Offset>(Offset.zero);
     final colorController = ValueNotifier<Color>(Colors.transparent);
 
@@ -598,61 +591,69 @@ final weekDays = getTranslatedWeekDays(context);
                           ],
                         ),
                         if (!isTaken && !isSkipped)
-  Padding(
-    padding: const EdgeInsets.only(top: 12.0),
-    child: Row(
-      children: [
-        // ✅ Bouton "Take"
-        Expanded(
-          child: OutlinedButton.icon(
-  icon: const Icon(Icons.check, color: Colors.green),
-  label: Text(
-    localizations.take,
-    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-  ),
-  style: OutlinedButton.styleFrom(
-    side: const BorderSide(color: Colors.green, width: 2),
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  ),
-  onPressed: () async {
-    await viewModel.takeMedication(
-      context,
-      medication.id,
-      DateTime.now(),
-    );
-    await animateCard(isTake: true);
-  },
-),
-        ),
-        const SizedBox(width: 8),
-        // ❌ Bouton "Skip"
-        Expanded(
-          child: OutlinedButton.icon(
-  icon: const Icon(Icons.close, color: Colors.red),
-  label: Text(
-    localizations.skip,
-    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-  ),
-  style: OutlinedButton.styleFrom(
-    side: const BorderSide(color: Colors.red, width: 2),
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  ),
-  onPressed: () async {
-    await viewModel.skipMedication(
-      context,
-      medication.id,
-      reminder.scheduledDate,
-      reminder.scheduledTime,
-    );
-    await animateCard(isTake: false);
-  },
-),
-        ),
-      ],
-    ),
-  )
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.check,
+                                        color: Colors.white, size: 16),
+                                    label: Text(
+                                      localizations.take,
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                    ),
+                                    onPressed: () async {
+                                      await viewModel.takeMedication(
+                                        context,
+                                        medication.id,
+                                        DateTime.now(),
+                                        scheduledTime: reminder
+                                            .scheduledTime, // Pass the reminder's scheduled time
+                                      );
+                                      await animateCard(isTake: true);
+                                      await _loadRemindersForDate(
+                                          selectedDate); // Refresh reminders
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.close,
+                                        color: Colors.white, size: 16),
+                                    label: Text(
+                                      localizations.skip,
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                    ),
+                                    onPressed: () async {
+                                      await viewModel.skipMedication(
+                                        context,
+                                        medication.id,
+                                        reminder.scheduledDate,
+                                        reminder.scheduledTime,
+                                      );
+                                      await animateCard(isTake: false);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
                         else
                           Padding(
                             padding: const EdgeInsets.only(top: 12.0),
@@ -704,7 +705,7 @@ final weekDays = getTranslatedWeekDays(context);
     );
   }
 
-  // Nouvelle mÃ©thode pour obtenir uniquement l'IconData sans crÃ©er l'icÃ´ne
+  // Nouvelle mÃƒÆ’Ã‚Â©thode pour obtenir uniquement l'IconData sans crÃƒÆ’Ã‚Â©er l'icÃƒÆ’Ã‚Â´ne
   IconData _getMedicationIconData(String type) {
     switch (type) {
       case 'pill':
@@ -725,7 +726,7 @@ final weekDays = getTranslatedWeekDays(context);
   Color _getMedicationColor(String type) {
     switch (type) {
       case 'pill':
-        return AppColors.primaryBlue;
+        return Colors.blue;
       case 'capsule':
         return Colors.green;
       case 'injection':
@@ -780,13 +781,13 @@ final weekDays = getTranslatedWeekDays(context);
     }
   }
 
-// Correction: ImplÃ©menter correctement la mÃ©thode _getDosageText
+// Correction: ImplÃƒÆ’Ã‚Â©menter correctement la mÃƒÆ’Ã‚Â©thode _getDosageText
   String _getDosageText(String dosage) {
     return dosage;
   }
 }
 
-// DÃ©placer la classe MedicationCard au niveau supÃ©rieur (en dehors de _MedicationHomeScreenState)
+// DÃƒÆ’Ã‚Â©placer la classe MedicationCard au niveau supÃƒÆ’Ã‚Â©rieur (en dehors de _MedicationHomeScreenState)
 class MedicationCard extends StatelessWidget {
   final Medication medication;
   final VoidCallback onTap;
@@ -798,90 +799,87 @@ class MedicationCard extends StatelessWidget {
   });
 
   @override
-Widget build(BuildContext context) {
-  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-  return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(16),
-    child: Container(
-      width: 120,
-      height: 140,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.transparent : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primaryBlue,
-          width: 1.5,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: isDarkMode
+                  ? Colors.black.withOpacity(0.3)
+                  : Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isDarkMode
-                ? Colors.black.withOpacity(0.2)
-                : Colors.grey.withOpacity(0.05),
-            spreadRadius: 0.5,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _getMedicationTypeColor(medication.medicationType),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: _getMedicationTypeIcon(medication.medicationType),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    medication.name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              medication.dosage,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _getMedicationScheduleText(medication),
+              style: TextStyle(
+                fontSize: 12,
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: _getMedicationTypeColor(medication.medicationType),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: _getMedicationTypeIcon(medication.medicationType),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            medication.name,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            medication.dosage,
-            style: TextStyle(
-              fontSize: 12,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _getMedicationScheduleText(context,medication),
-            style: TextStyle(
-              fontSize: 11,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          
-        ],
-      ),
-    ),
-  );
-}
+    );
+  }
+
   Color _getMedicationTypeColor(String type) {
     switch (type) {
       case 'pill':
-        return AppColors.primaryBlue;
+        return Colors.blue;
       case 'capsule':
         return Colors.green;
       case 'injection':
@@ -916,16 +914,15 @@ Widget build(BuildContext context) {
       default:
         iconData = Icons.medication;
     }
-    return Icon(iconData, color: Colors.white, size: 14);
+    return Icon(iconData, color: Colors.white, size: 20);
   }
 
-  String _getMedicationScheduleText(BuildContext context, Medication medication) {
-  final locale = AppLocalizations.of(context)!;
-  return locale.timesADay(medication.timeOfDay.length);
-}
+  String _getMedicationScheduleText(Medication medication) {
+    return '${medication.timeOfDay.length} times a day';
+  }
 }
 
-// Nouvelle classe pour la carte d'ajout de mÃ©dicament
+// Nouvelle classe pour la carte d'ajout de mÃƒÆ’Ã‚Â©dicament
 class AddMedicationCard extends StatelessWidget {
   final VoidCallback onTap;
 

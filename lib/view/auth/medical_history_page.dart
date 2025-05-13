@@ -244,8 +244,9 @@ class _MedicalHistoryPageState extends State<MedicalHistoryPage> {
             context: context,
             newDiagnosis: diagnosisController.text.isNotEmpty ? diagnosisController.text : null,
             newType: selectedStage,
-            newMedicalReportPath: selectedFiles.isNotEmpty ? selectedFiles.first : null,
-          );
+newMedicalReportPath: selectedFiles.isNotEmpty && selectedFiles.first.contains('/')
+    ? selectedFiles.first
+    : null,          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryBlue,

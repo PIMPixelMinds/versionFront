@@ -97,7 +97,7 @@ class _MemoryMatchPageState extends State<MemoryMatchPage> {
 
         if (_cardValues[_firstCardIndex] == _cardValues[_secondCardIndex]) {
           _matchedCount++;
-          _score += 10;
+          _score += 25; // Award 25 points per match (equivalent to 12.5 displayed)
           _resetSelection();
           if (_matchedCount == 8) {
             _gameTimer.cancel();
@@ -124,77 +124,89 @@ class _MemoryMatchPageState extends State<MemoryMatchPage> {
   }
 
   void _showGameOverDialog() {
-  final locale = AppLocalizations.of(context)!;
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Theme.of(context).dialogBackgroundColor, // ✅ Respecte le thème
-
-        title: Text(
-          locale.gameOver,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+    final locale = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: AppColors.primaryBlue,
+          title: Text(
+            locale.gameOver,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                locale.yourScore(_score ~/ 2), // Display score divided by 2
+                style: const TextStyle(
+                  fontSize: 22,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              locale.yourScore(_score),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "${locale.moves}: $_moves",
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              locale.timeLeft(_remainingTime),
-              style: Theme.of(context).textTheme.bodyLarge,
+              Text(
+                '${locale.moves}: $_moves',
+                style: const TextStyle(fontSize: 18, color: Colors.white),
+              ),
+              Text(
+                locale.timeLeft(_remainingTime),
+                style: const TextStyle(fontSize: 18, color: Colors.white),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: Text(
+                locale.backToMenu,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            ),
-            onPressed: () {
-              Navigator.pop(context); // Ferme la boîte
-              Navigator.pop(context); // Retour au menu
-            },
-            child: Text(
-              locale.backToMenu,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          )
-        ],
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   Widget _buildInfoBox(String title, String value) {
     return Card(
       color: Theme.of(context).cardColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF3c84fb), width: 1.5)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFF3c84fb), width: 1.5),
+      ),
       elevation: 0,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
         child: Column(
           children: [
-            Text(title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
-            Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              title,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              value,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),
@@ -205,9 +217,12 @@ class _MemoryMatchPageState extends State<MemoryMatchPage> {
     final locale = AppLocalizations.of(context)!;
     return Center(
       child: Text(
-  locale.gameTimeLeft('$_remainingTime'),
-  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-),
+        locale.gameTimeLeft('$_remainingTime'),
+        style: Theme.of(context)
+            .textTheme
+            .titleLarge
+            ?.copyWith(fontWeight: FontWeight.bold),
+      ),
     );
   }
 
@@ -217,7 +232,11 @@ class _MemoryMatchPageState extends State<MemoryMatchPage> {
       child: Stack(
         children: [
           GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 10, mainAxisSpacing: 10),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
             itemCount: 16,
             itemBuilder: (context, index) {
               return GestureDetector(
@@ -228,12 +247,20 @@ class _MemoryMatchPageState extends State<MemoryMatchPage> {
                     borderRadius: BorderRadius.circular(8),
                     color: AppColors.primaryBlue,
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 5, spreadRadius: 1),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 5,
+                        spreadRadius: 1,
+                      ),
                     ],
                   ),
                   child: Center(
                     child: _cardFlips[index]
-                        ? Icon(_getCardIcon(_cards[index]), size: 36, color: Theme.of(context).colorScheme.onBackground)
+                        ? Icon(
+                      _getCardIcon(_cards[index]),
+                      size: 36,
+                      color: Theme.of(context).colorScheme.onBackground,
+                    )
                         : const SizedBox.shrink(),
                   ),
                 ),
@@ -241,34 +268,34 @@ class _MemoryMatchPageState extends State<MemoryMatchPage> {
             },
           ),
           if (_isRevealing)
-  Positioned.fill(
-    child: Container(
-      color: Colors.black.withOpacity(0.1), // ✅ s'applique à tout l'écran
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              AppLocalizations.of(context)!.getReady,
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.1),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        locale.getReady,
+                        style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        '$_showCardsTime',
+                        style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 100,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            Text(
-              '$_showCardsTime',
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                fontWeight: FontWeight.w900,
-                fontSize: 100,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  ),
         ],
       ),
     );
@@ -283,7 +310,7 @@ class _MemoryMatchPageState extends State<MemoryMatchPage> {
       Icons.assignment,
       Icons.assessment,
       Icons.attach_money,
-      Icons.business
+      Icons.business,
     ][int.parse(value) - 1];
   }
 
@@ -294,7 +321,10 @@ class _MemoryMatchPageState extends State<MemoryMatchPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(locale.memoryGameTitle, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        title: Text(
+          locale.memoryGameTitle,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: Padding(
@@ -305,7 +335,7 @@ class _MemoryMatchPageState extends State<MemoryMatchPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildInfoBox(locale.score, '$_score'),
+                _buildInfoBox(locale.score, '${_score ~/ 2}'), // Display score divided by 2
                 _buildInfoBox(locale.moves, '$_moves'),
               ],
             ),

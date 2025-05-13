@@ -1,12 +1,18 @@
 class ApiConstants {
-  static const String baseUrl = "http://192.168.1.158:3000";
+  static const String baseUrl = "http://172.20.10.3:3000";
   static const String loginEndpoint = "$baseUrl/auth/login";
   static const String signupEndpoint = "$baseUrl/auth/signup";
   static const String googleLoginEndpoint = "$baseUrl/auth/google/login";
+  static const String appleLoginEndpoint = "$baseUrl/auth/apple-login";
   static const String googleRedirectEndpoint = "$baseUrl/auth/google/redirect";
   static const String forgotPasswordEndpoint = "$baseUrl/auth/forgot-password";
   static const String verifyOtpEndpoint = "$baseUrl/auth/verify-reset-code";
   static const String resendOtpEndpoint = "$baseUrl/auth/get-reset-code";
+  static const String verifyEmailEndpoint = "$baseUrl/auth/verify-email";
+  static const String verifyEmailOtpEndpoint =
+      "$baseUrl/auth/verify-email-code";
+  static const String updateAuthFcmTokenByEmailEndpoint =
+      "$baseUrl/auth/updateFcmTokenByEmail";
   static const String resetPasswordEndpoint = "$baseUrl/auth/reset-password";
   static const String getProfileEndpoint = "$baseUrl/auth/profile";
   static const String updateProfileEndpoint =
@@ -31,6 +37,9 @@ class ApiConstants {
       "$baseUrl/appointment/countAppointments";
   static const String fetchCompletedAppointmentsEndpoint =
       "$baseUrl/appointment/completedAppointments";
+  static const String getMyAppointmentUserId =
+      "$baseUrl/appointment/getMyAppointmentUserId";
+  static const String getMyUserId = "$baseUrl/auth/getMyUserId";
 
   // Medication API endpoints
   static const String getMedicationsEndpoint = "$baseUrl/medications";
@@ -87,12 +96,15 @@ class ApiConstants {
   static const String deleteNotification =
       "$baseUrl/notification/deleteNotification";
   // --- Assistant (Chatbot)
-static String getAssistantUrl(String userId, String question) {
-  final encodedQuestion = Uri.encodeComponent(question);
-  return "$baseUrl/assistant/ask/$userId?question=$encodedQuestion";
-}
+  static String getAssistantUrl(String userId, String question) {
+    final encodedQuestion = Uri.encodeComponent(question);
+    return "$baseUrl/assistant/ask/$userId?question=$encodedQuestion";
+  }
 
-static String getAssistantContextUrl(String userId) {
-  return "$baseUrl/assistant/openai/context/$userId";
-}
+  static String getAssistantContextUrl(String userId) {
+    return "$baseUrl/assistant/openai/context/$userId";
+  }
+
+  static const String predictRelapseEndpoint =
+      '$baseUrl/historique/predict-next-relapse';
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:pim/data/repositories/healthtracker_repository.dart';
 
@@ -32,18 +34,17 @@ Future<void> fetchActivities(BuildContext context) async {
   _setLoading(true);
   try {
     final localeCode = Localizations.localeOf(context).languageCode;
-    print('🌍 Current locale detected: $localeCode');
+    print('ðŸŒ Current locale detected: $localeCode');
 
     final fetchedActivities = await _repository.getActivities(lang: localeCode);
     activities = fetchedActivities;
-    print('✅ Activities fetched (${activities.length}): $activities');
+    print('âœ… Activities fetched (${activities.length}): $activities');
   } catch (e) {
     _handleError(context, "Error fetching activities: $e");
   } finally {
     _setLoading(false);
   }
 }
-
 
   Future<void> fetchUpcomingAppointmentsCount(BuildContext context) async {
     _setLoading(true);
@@ -112,7 +113,7 @@ Future<void> fetchActivities(BuildContext context) async {
     }
   }
 
- Future<void> fetchMedicationStats(BuildContext context) async {
+  Future<void> fetchMedicationStats(BuildContext context) async {
     _setLoading(true);
     try {
       final stats = await _repository.getMedicationStats();
@@ -164,4 +165,64 @@ Future<void> fetchActivities(BuildContext context) async {
     pendingRate = 0;
     skippedRate = 0;
   }
+
+  Map<String, dynamic>? relapsePrediction;
+bool isLoadingPrediction = false;
+String predictionError = '';
+
+final HealthTrackerRepository _repo = HealthTrackerRepository();
+
+Future<void> fetchRelapsePrediction() async {
+  isLoadingPrediction = true;
+  predictionError = '';
+  relapsePrediction = null;
+  notifyListeners();
+
+  print("🔄 Début de la prédiction...");
+
+  try {
+    final response = await _repo.predictNextRelapse();
+    print("✅ Réponse reçue depuis le backend : $response");
+
+    if (response is Map &&
+        response.containsKey("predicted_days_to_next_relapse") &&
+        response.containsKey("predicted_next_relapse_date")) {
+      relapsePrediction = response;
+      predictionError = '';
+      print("🧠 Prédiction stockée : $relapsePrediction");
+    } else {
+      relapsePrediction = null;
+      predictionError = "Réponse inattendue du serveur.";
+      print("⚠️ Réponse inattendue : $response");
+    }
+  } catch (e) {
+    print("❌ Exception attrapée : $e");
+
+    try {
+      final errorString = e.toString();
+      final jsonStart = errorString.indexOf('{');
+      final jsonPart = jsonStart != -1 ? errorString.substring(jsonStart) : '{}';
+      final decoded = json.decode(jsonPart);
+      print("🔍 Décodage JSON depuis l'erreur : $decoded");
+
+      if (decoded is Map<String, dynamic> &&
+          decoded.containsKey("predicted_days_to_next_relapse") &&
+          decoded.containsKey("predicted_next_relapse_date")) {
+        relapsePrediction = decoded;
+        predictionError = '';
+        print("⚠️ Correction automatique depuis l'erreur JSON : $decoded");
+      } else {
+        predictionError = e.toString();
+        print("❌ Le JSON ne contient pas les champs attendus.");
+      }
+    } catch (_) {
+      predictionError = e.toString();
+      print("❌ Impossible de parser l'erreur comme JSON.");
+    }
+  }
+
+  isLoadingPrediction = false;
+  notifyListeners();
+  print("✅ Fin de la prédiction. isLoadingPrediction: $isLoadingPrediction");
+}
 }

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pim/core/constants/app_colors.dart';
+import 'package:pim/viewmodel/auth_viewmodel.dart';
+import 'package:provider/provider.dart';
 
 void showChatbot(BuildContext context) {
   showModalBottomSheet(
@@ -24,70 +26,40 @@ class ChatbotPopup extends StatefulWidget {
 class _ChatbotPopupState extends State<ChatbotPopup> {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> _messages = [];
-  final ScrollController _scrollController = ScrollController();
 
-  final String geminiApiKey = "AIzaSyCujKp6IMWUmJx6qYTnSV9zK8aGTIl4_0g"; // Remplace par ta vraie clé
+  //final String geminiApiKey = "AIzaSyCujKp6IMWUmJx6qYTnSV9zK8aGTIl4_0g";
 
   Future<String> fetchAIResponse(String userMessage) async {
-    final url =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$geminiApiKey";
+    final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
+    final String userId = authViewModel.userProfile!['_id'].toString();
+    final String backendUrl =
+        "http://172.20.10.3:3000/assistant/ask/$userId?question=${Uri.encodeQueryComponent(userMessage)}";
 
     try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "contents": [
-            {
-              "parts": [
-                {
-                  "text":
-                      "You are a helpful assistant. Only answer questions about Multiple Sclerosis (MS) / Sclérose en plaques (SEP)."
-                },
-                {"text": userMessage}
-              ]
-            }
-          ]
-        }),
-      );
-
+      final response = await http.get(Uri.parse(backendUrl));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data["candidates"][0]["content"]["parts"][0]["text"];
+        return data["response"] ?? "No response from assistant.";
       } else {
-        return "API error: ${response.statusCode}";
+        return "Server error: ${response.statusCode}";
       }
     } catch (e) {
-      return "Erreur: $e";
+      return "Error contacting assistant: $e";
     }
   }
 
   void _sendMessage() async {
-    final localizations = AppLocalizations.of(context)!;
     final userMessage = _controller.text.trim();
-
     if (userMessage.isEmpty) return;
 
     setState(() {
       _messages.add({"user": userMessage});
     });
 
-    final lower = userMessage.toLowerCase();
-    final isMSRelated = lower.contains("sclérose en plaques") ||
-        lower.contains("sep") ||
-        lower.contains("multiple sclerosis") ||
-        lower.contains("ms");
-
-    if (isMSRelated) {
-      final botResponse = await fetchAIResponse(userMessage);
-      setState(() {
-        _messages.add({"bot": botResponse});
-      });
-    } else {
-      setState(() {
-        _messages.add({"bot": localizations.onlyMsQuestions});
-      });
-    }
+    final botResponse = await fetchAIResponse(userMessage);
+    setState(() {
+      _messages.add({"bot": botResponse});
+    });
 
     _controller.clear();
   }
@@ -100,7 +72,8 @@ class _ChatbotPopupState extends State<ChatbotPopup> {
     final Color botColor = isDarkMode ? Colors.grey[800]! : Colors.grey[200]!;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         child: Container(
           height: MediaQuery.of(context).size.height * 0.75,
@@ -144,12 +117,11 @@ class _ChatbotPopupState extends State<ChatbotPopup> {
                     final isUser = role == "user";
 
                     return Align(
-                      alignment: isUser
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
+                      alignment:
+                          isUser ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        margin:
-                            const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 8),
                         padding: const EdgeInsets.symmetric(
                             vertical: 12, horizontal: 16),
                         decoration: BoxDecoration(
@@ -185,9 +157,8 @@ class _ChatbotPopupState extends State<ChatbotPopup> {
                       decoration: InputDecoration(
                         hintText: localizations.chatbotHint,
                         hintStyle: TextStyle(
-                          color: isDarkMode
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
+                          color:
+                              isDarkMode ? Colors.grey[400] : Colors.grey[600],
                         ),
                         filled: true,
                         fillColor:

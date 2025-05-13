@@ -4,7 +4,7 @@ import 'dart:convert';
 
 Future<List<dynamic>> fetchNews() async {
   final response =
-      await http.get(Uri.parse('http://192.168.1.114:3000/news/latest'));
+      await http.get(Uri.parse('http://172.20.10.3:3000/news/latest'));
 
   if (response.statusCode == 200) {
     return jsonDecode(response.body);

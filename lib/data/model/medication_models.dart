@@ -140,8 +140,8 @@ class MedicationReminder {
     required this.medication,
     required this.scheduledDate,
     required this.scheduledTime,
-    required this.isCompleted,
-    required this.isSkipped,
+    this.isCompleted = false,
+    this.isSkipped = false,
     this.completedAt,
     this.message = 'Take your medication',
   });
@@ -186,6 +186,44 @@ class MedicationReminder {
           ? DateTime.parse(json['completedAt'])
           : null,
       message: json['message']?.toString() ?? 'Take your medication',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'medicationId': medicationId,
+      'medication': medication.toJson(),
+      'scheduledDate': scheduledDate.toIso8601String(),
+      'scheduledTime': scheduledTime,
+      'isCompleted': isCompleted,
+      'isSkipped': isSkipped,
+      if (completedAt != null) 'completedAt': completedAt!.toIso8601String(),
+      'message': message,
+    };
+  }
+
+  MedicationReminder copyWith({
+    String? id,
+    String? medicationId,
+    Medication? medication,
+    DateTime? scheduledDate,
+    String? scheduledTime,
+    bool? isCompleted,
+    bool? isSkipped,
+    DateTime? completedAt,
+    String? message,
+  }) {
+    return MedicationReminder(
+      id: id ?? this.id,
+      medicationId: medicationId ?? this.medicationId,
+      medication: medication ?? this.medication,
+      scheduledDate: scheduledDate ?? this.scheduledDate,
+      scheduledTime: scheduledTime ?? this.scheduledTime,
+      isCompleted: isCompleted ?? this.isCompleted,
+      isSkipped: isSkipped ?? this.isSkipped,
+      completedAt: completedAt ?? this.completedAt,
+      message: message ?? this.message,
     );
   }
 }
@@ -245,26 +283,26 @@ class TakeMedicationDto {
   final DateTime takenAt;
   final int? quantityTaken;
   final String? notes;
+  final String? scheduledTime; // Add this
 
   TakeMedicationDto({
     required this.takenAt,
     this.quantityTaken,
     this.notes,
+    this.scheduledTime, // Add this
   });
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = {
+    return {
       'takenAt': takenAt.toIso8601String(),
+      if (quantityTaken != null) 'quantityTaken': quantityTaken,
+      if (notes != null) 'notes': notes,
+      if (scheduledTime != null) 'scheduledTime': scheduledTime, // Add this
     };
-
-    if (quantityTaken != null) data['quantityTaken'] = quantityTaken;
-    if (notes != null) data['notes'] = notes;
-
-    return data;
   }
 }
 
-// ModÃ¨le pour l'historique du stock
+// ModÃƒÂ¨le pour l'historique du stock
 class StockHistory {
   final String id;
   final String medicationId;
@@ -290,15 +328,18 @@ class StockHistory {
 
   factory StockHistory.fromJson(Map<String, dynamic> json) {
     return StockHistory(
-      id: json['_id'],
-      medicationId: json['medicationId'],
-      previousStock: json['previousStock'],
-      currentStock: json['currentStock'],
-      changeAmount: json['changeAmount'],
+      id: json['_id'] ?? '',
+      medicationId: json['medicationId'] ?? '',
+      previousStock: json['previousStock'] ?? 0,
+      // Utiliser newStock s'il existe, sinon currentStock, sinon 0
+      currentStock: json['newStock'] ?? json['currentStock'] ?? 0,
+      changeAmount: json['changeAmount'] ?? 0,
       notes: json['notes'],
-      type: json['type'],
-      userId: json['userId'],
-      createdAt: DateTime.parse(json['createdAt']),
+      type: json['type'] ?? 'unknown',
+      userId: json['userId'] ?? '',
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
     );
   }
 }

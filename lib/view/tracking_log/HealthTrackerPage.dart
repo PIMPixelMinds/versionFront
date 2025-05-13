@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
@@ -32,9 +34,10 @@ class _HealthTrackerPageState extends State<HealthTrackerPage>
           .fetchUpcomingAppointmentsCount(context);
       Provider.of<HealthTrackerViewModel>(context, listen: false)
           .fetchCompletedAppointments(context);
+          Provider.of<HealthTrackerViewModel>(context, listen: false).fetchRelapsePrediction();
+
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +110,14 @@ class _HealthTrackerPageState extends State<HealthTrackerPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (viewModel.isLoadingPrediction)
+      const Center(child: CircularProgressIndicator()),
+
+    if (viewModel.relapsePrediction != null)
+      _buildPredictionCard(context, viewModel.relapsePrediction!),
+
+    if (viewModel.predictionError.isNotEmpty)
+      _buildErrorCard(context,viewModel.predictionError),
           Text(
             locale.suggestedActivities,
             style: theme.textTheme.titleMedium
@@ -129,17 +140,20 @@ class _HealthTrackerPageState extends State<HealthTrackerPage>
                   Text(locale.noActivities, style: theme.textTheme.bodyMedium),
             )
           else
-         Column(
-  children: viewModel.activities.map((activity) {
-    final title = activity['activity']?.toString().trim() ?? locale.unknownActivity;
-    final description = activity['description']?.toString().trim() ?? locale.noDescription;
-    return activityCard(title, description);
-  }).toList(),
-),
+            Column(
+              children: viewModel.activities.map((activity) {
+                final title = activity['activity']?.toString().trim() ??
+                    locale.unknownActivity;
+                final description =
+                    activity['description']?.toString().trim() ??
+                        locale.noDescription;
+                return activityCard(title, description);
+              }).toList(),
+            ),
           const SizedBox(height: 24),
 
           // Medication Overview
-           Row(
+          Row(
             children: [
               Expanded(
                 child: Column(
@@ -409,7 +423,7 @@ class _HealthTrackerPageState extends State<HealthTrackerPage>
       [bool isCompleted = false]) {
     return Card(
       color: Colors.grey[200], // ✅ Fond gris clair
-    elevation: 4,
+      elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
@@ -441,4 +455,77 @@ class _HealthTrackerPageState extends State<HealthTrackerPage>
       ),
     );
   }
+}
+Widget _buildPredictionCard(BuildContext context, Map<String, dynamic> prediction) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final localizations = AppLocalizations.of(context)!;
+
+  return Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.blueAccent.withOpacity(0.15)
+                : Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primaryBlue,
+              width: 1.5,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  localizations.relapsePredictionTitle,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  localizations.inDays(prediction['predicted_days_to_next_relapse']),
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                ),
+                Text(
+                  "${localizations.estimatedDate}: ${prediction['predicted_next_relapse_date']}",
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+Widget _buildErrorCard(BuildContext context, String error) {
+  final localizations = AppLocalizations.of(context)!;
+
+  return Card(
+    color: Colors.orange[50],
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Text(
+        error.contains("Pas assez d'historique")
+            ? localizations.notEnoughHistory
+            : "${localizations.predictionError}: $error",
+        style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.w500),
+      ),
+    ),
+  );
 }

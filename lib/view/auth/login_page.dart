@@ -1,4 +1,6 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:pim/data/repositories/auth_repository.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../viewmodel/auth_viewmodel.dart';
@@ -45,9 +47,6 @@ class _LoginPageState extends State<LoginPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const SizedBox(height: 20),
-                            const Icon(Icons.radio_button_checked,
-                                size: 60, color: AppColors.primaryBlue),
                             const SizedBox(height: 20),
                             Text(localizations.loginToYourAccount,
                                 style: const TextStyle(fontSize: 16)),
@@ -127,13 +126,24 @@ class _LoginPageState extends State<LoginPage> {
                             Consumer<AuthViewModel>(
                               builder: (context, authViewModel, child) {
                                 return ElevatedButton(
-                                  onPressed: () {
+                                  onPressed: () async {
                                     if (_formKey.currentState!.validate()) {
-                                      authViewModel.login(
+                                      await authViewModel.login(
                                         context,
                                         emailController.text.trim(),
                                         passwordController.text.trim(),
                                       );
+                                      // After successful login
+                                      final fcmToken = await FirebaseMessaging
+                                          .instance
+                                          .getToken();
+                                      print("New FCM token: $fcmToken");
+                                      print(
+                                          "Email : ${emailController.text.trim()}");
+
+                                      await AuthRepository().generateFcmToken(
+                                          emailController.text.trim(),
+                                          fcmToken);
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -255,16 +265,27 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildSocialButtons() {
+    final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         GestureDetector(
           onTap: () {
-            final authViewModel =
-                Provider.of<AuthViewModel>(context, listen: false);
             authViewModel.signInWithGoogle(context);
           },
           child: _buildSocialButton("assets/google.png"),
+        ),
+        const SizedBox(width: 16),
+        GestureDetector(
+          onTap: () {
+            authViewModel.signInWithApple(context);
+          },
+          child: _buildSocialButton(
+            Theme.of(context).brightness == Brightness.dark
+                ? "assets/Logo - SIWA - Left-aligned - White - Medium.png"
+                : "assets/Logo - SIWA - Left-aligned - Black - Medium.png",
+          ),
         ),
       ],
     );

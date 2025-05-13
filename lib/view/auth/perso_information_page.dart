@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../viewmodel/auth_viewmodel.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // 👈 Ajout
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class PersonalInformationPage extends StatefulWidget {
   const PersonalInformationPage({super.key});
@@ -15,6 +15,9 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
   String? selectedGender;
   final TextEditingController fullNameController = TextEditingController();
   DateTime? selectedDate;
+  String? originalFullName;
+  String? originalBirthday;
+  String? originalGender;
 
   @override
   void initState() {
@@ -23,93 +26,103 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     final profile = authViewModel.userProfile;
 
     if (profile != null) {
-      fullNameController.text = profile["fullName"] ?? '';
+      originalFullName = profile["fullName"] ?? '';
+      fullNameController.text = originalFullName!;
 
       if (profile["birthday"] != null) {
-        selectedDate = DateTime.tryParse(profile["birthday"]);
+        originalBirthday = profile["birthday"];
+        selectedDate = DateTime.tryParse(originalBirthday!);
       }
 
       final gender = profile["gender"];
       if (gender != null) {
-        selectedGender = gender.toLowerCase() == "male" ? "Male" : "Female";
+        originalGender = gender.toLowerCase() == "male" ? "Male" : "Female";
+        selectedGender = originalGender;
       }
     }
   }
 
   @override
-Widget build(BuildContext context) {
-  final authViewModel = Provider.of<AuthViewModel>(context);
-  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-  final localizations = AppLocalizations.of(context)!;
+  void dispose() {
+    fullNameController.dispose();
+    super.dispose();
+  }
 
-  return Scaffold(
-    resizeToAvoidBottomInset: true, // 👈 Important pour éviter l'overflow clavier
-    backgroundColor: isDarkMode ? AppColors.primaryBlue : Colors.white,
-    appBar: AppBar(
-      title: Text(
-        localizations.personalInformation,
-        style: TextStyle(
-          fontSize: MediaQuery.of(context).size.width * 0.045,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      centerTitle: true,
-      backgroundColor: AppColors.primaryBlue,
-      iconTheme: const IconThemeData(color: Colors.white),
-      elevation: 0,
-    ),
-    body: Stack(
-      children: [
-        SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 100), // 👈 pour laisser de l'espace sous le bouton
-          child: Column(
-            children: [
-              _buildProfileHeader(localizations),
-              Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.grey[900] : Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
-                ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: MediaQuery.of(context).size.width * 0.05,
-                  vertical: MediaQuery.of(context).size.height * 0.02,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTextField(
-                      localizations.fullName,
-                      localizations.enterFullName,
-                      fullNameController,
-                      false,
-                      isDarkMode,
-                    ),
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.02),
-                    Text(
-                      localizations.birthday,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildDatePickerField(isDarkMode, localizations),
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.02),
-                    _buildGenderSelector(isDarkMode, localizations),
-                    const SizedBox(height: 30),
-                    _buildBottomButton(isDarkMode, authViewModel, localizations), // 👈 déplacé ici
-                  ],
-                ),
-              ),
-            ],
+  @override
+  Widget build(BuildContext context) {
+    final authViewModel = Provider.of<AuthViewModel>(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+
+    return Scaffold(
+      backgroundColor: isDarkMode ? AppColors.primaryBlue : Colors.white,
+      appBar: AppBar(
+        title: Text(
+          localizations.personalInformation,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
-        if (authViewModel.isLoading)
-          const Center(child: CircularProgressIndicator()),
-      ],
-    ),
-  );
-}
+        centerTitle: true,
+        backgroundColor: AppColors.primaryBlue,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              _buildProfileHeader(localizations),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.grey[900] : Colors.white,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTextField(
+                          localizations.fullName,
+                          localizations.enterFullName,
+                          fullNameController,
+                          false,
+                          isDarkMode,
+                        ),
+                        const SizedBox(height: 15),
+                        Text(
+                          localizations.birthday,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDatePickerField(isDarkMode, localizations),
+                        const SizedBox(height: 15),
+                        _buildGenderSelector(isDarkMode, localizations),
+                        const SizedBox(height: 30),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              _buildBottomButton(isDarkMode, authViewModel, localizations),
+            ],
+          ),
+          if (authViewModel.isLoading)
+            const Center(child: CircularProgressIndicator()),
+        ],
+      ),
+    );
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
@@ -147,7 +160,7 @@ Widget build(BuildContext context) {
           decoration: InputDecoration(
             labelText: localizations.birthday,
             hintText: selectedDate != null
-                ? "${selectedDate!.year}-${selectedDate!.month}-${selectedDate!.day}"
+                ? "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}"
                 : localizations.selectBirthday,
             filled: true,
             fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
@@ -189,29 +202,33 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _buildBottomButton(bool isDarkMode, AuthViewModel authViewModel, AppLocalizations localizations) {
+  Widget _buildBottomButton(
+      bool isDarkMode, AuthViewModel authViewModel, AppLocalizations localizations) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       color: isDarkMode ? Colors.grey[900] : Colors.white,
       child: ElevatedButton(
         onPressed: () async {
-          if (fullNameController.text.isEmpty || selectedDate == null || selectedGender == null) {
+          // Check if any field has changed
+          final newName = fullNameController.text.trim();
+          final newBirthday = selectedDate?.toIso8601String();
+          final newGender = selectedGender == localizations.male ? "male" : selectedGender == localizations.female ? "female" : null;
+
+          if (newName == originalFullName &&
+              newBirthday == originalBirthday &&
+              newGender == originalGender) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(localizations.pleaseFillAllFields)),
+              SnackBar(content: Text(localizations.noChangesMade)),
             );
             return;
           }
 
           await authViewModel.updateProfile(
             context: context,
-            newName: fullNameController.text,
-            newBirthday: selectedDate!.toIso8601String(),
-            newGender: selectedGender == localizations.male ? "male" : "female",
-          );
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(localizations.profileUpdatedSuccessfully)),
+            newName: newName != originalFullName ? newName : null,
+            newBirthday: newBirthday != originalBirthday ? newBirthday : null,
+            newGender: newGender != originalGender ? newGender : null,
           );
         },
         style: ElevatedButton.styleFrom(
@@ -239,10 +256,11 @@ Widget build(BuildContext context) {
         ),
         const SizedBox(height: 8),
         Row(
-  children: [
-            Expanded(child:_buildGenderButton(localizations.male, Icons.male, isDarkMode)),
-            SizedBox(width: MediaQuery.of(context).size.width * 0.03),
-            Expanded(child:_buildGenderButton(localizations.female, Icons.female, isDarkMode)),
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildGenderButton(localizations.male, Icons.male, isDarkMode),
+            const SizedBox(width: 10),
+            _buildGenderButton(localizations.female, Icons.female, isDarkMode),
           ],
         ),
       ],
@@ -262,14 +280,22 @@ Widget build(BuildContext context) {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primaryBlue : (isDarkMode ? Colors.grey[800] : Colors.white),
+            color: isSelected
+                ? AppColors.primaryBlue
+                : (isDarkMode ? Colors.grey[800] : Colors.white),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: isSelected ? AppColors.primaryBlue : Colors.grey),
+            border: Border.all(
+              color: isSelected ? AppColors.primaryBlue : Colors.grey,
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: isSelected ? Colors.white : Colors.grey, size: 22),
+              Icon(
+                icon,
+                color: isSelected ? Colors.white : Colors.grey,
+                size: 22,
+              ),
               const SizedBox(width: 5),
               Text(
                 gender,
@@ -285,11 +311,20 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _buildTextField(String label, String hint, TextEditingController controller, bool isPassword, bool isDarkMode) {
+  Widget _buildTextField(
+      String label,
+      String hint,
+      TextEditingController controller,
+      bool isPassword,
+      bool isDarkMode,
+      ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
         const SizedBox(height: 5),
         TextFormField(
           controller: controller,

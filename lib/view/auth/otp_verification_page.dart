@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // ✅ Import pour filtrer les entrées numériques
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../viewmodel/auth_viewmodel.dart';
@@ -80,125 +80,142 @@ class _OTPVerificationBottomSheetState
     final isDarkMode = theme.brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 10),
+      padding: MediaQuery.of(context).viewInsets, // 👈 adapts to keyboard
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
 
-          // ✅ Titre amélioré
-          Text(
-            "Vérification du Code",
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
+              Text(
+                "Vérification du Code",
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
 
-          // ✅ Texte d'instruction
-          Text(
-            "Veuillez entrer le code envoyé à\n${widget.email}",
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium,
-          ),
+              Text(
+                "Veuillez entrer le code envoyé à\n${widget.email}",
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium,
+              ),
 
-          const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-          // ✅ Champs OTP améliorés
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              6,
-              (index) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: SizedBox(
-                  width: 50,
-                  height: 55,
-                  child: TextField(
-                    controller: otpControllers[index],
-                    focusNode: focusNodes[index],
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    onChanged: (value) => _onOTPEntered(index, value),
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly, // ✅ Permet seulement les chiffres
-                    ],
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: isDarkMode ? Colors.grey[900] : Colors.grey[100], // ✅ Adaptation mode sombre/clair
-                      counterText: "",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.primaryBlue),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: AppColors.primaryBlue, width: 2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  6,
+                  (index) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: SizedBox(
+                      width: 40,
+                      height: 45,
+                      child: TextField(
+                        controller: otpControllers[index],
+                        focusNode: focusNodes[index],
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        maxLength: 1,
+                        onChanged: (value) => _onOTPEntered(index, value),
+                        style: const TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: isDarkMode
+                              ? Colors.grey[900]
+                              : Colors.grey[100],
+                          counterText: "",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                BorderSide(color: AppColors.primaryBlue),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(
+                                color: AppColors.primaryBlue, width: 2),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
 
-          const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-          // ✅ Compteur avec des couleurs adaptées
-          Text(
-            formattedTime,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryBlue),
-          ),
-          const SizedBox(height: 10),
-
-          // ✅ Bouton "Renvoyer"
-          TextButton(
-            onPressed: _canResend ? () => authViewModel.resendOtp(context, widget.email) : null,
-            child: Text(
-              "Vous n’avez pas reçu de code ? Renvoyer",
-              style: TextStyle(
-                color: _canResend ? AppColors.primaryBlue : Colors.grey,
-                fontWeight: FontWeight.bold,
+              Text(
+                formattedTime,
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryBlue),
               ),
-            ),
-          ),
+              const SizedBox(height: 10),
 
-          const SizedBox(height: 20),
-
-          // ✅ Bouton "Vérifier" modernisé
-          authViewModel.isLoading
-              ? const CircularProgressIndicator()
-              : SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      String otpCode = otpControllers.map((c) => c.text.trim()).join();
-                      if (otpCode.length < 6) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Veuillez entrer un code OTP valide de 6 chiffres.")),
-                        );
-                        return;
-                      }
-
-                      bool isVerified = await authViewModel.verifyOtp(context, widget.email, otpCode);
-                      if (isVerified) {
-                        _showResetPasswordBottomSheet(context, widget.email);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: Text(
-                      "Vérifier",
-                      style: theme.textTheme.labelLarge?.copyWith(color: Colors.white, fontSize: 18),
-                    ),
+              TextButton(
+                onPressed: _canResend
+                    ? () => authViewModel.resendOtp(context, widget.email)
+                    : null,
+                child: Text(
+                  "Vous n’avez pas reçu de code ? Renvoyer",
+                  style: TextStyle(
+                    color: _canResend ? AppColors.primaryBlue : Colors.grey,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
+              ),
 
-          const SizedBox(height: 10),
-        ],
+              const SizedBox(height: 20),
+
+              authViewModel.isLoading
+                  ? const CircularProgressIndicator()
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          String otpCode =
+                              otpControllers.map((c) => c.text.trim()).join();
+                          if (otpCode.length < 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      "Veuillez entrer un code OTP valide de 6 chiffres.")),
+                            );
+                            return;
+                          }
+
+                          bool isVerified = await authViewModel.verifyOtp(
+                              context, widget.email, otpCode);
+                          if (isVerified) {
+                            _showResetPasswordBottomSheet(
+                                context, widget.email);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(
+                          "Vérifier",
+                          style: theme.textTheme.labelLarge?.copyWith(
+                              color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -206,6 +223,12 @@ class _OTPVerificationBottomSheetState
   @override
   void dispose() {
     _timer.cancel();
+    for (var controller in otpControllers) {
+      controller.dispose();
+    }
+    for (var node in focusNodes) {
+      node.dispose();
+    }
     super.dispose();
   }
 }

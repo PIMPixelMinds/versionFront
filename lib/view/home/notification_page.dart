@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:pim/core/constants/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:pim/viewmodel/notification_viewmodel.dart';
 import 'package:pim/data/model/notification_model.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({Key? key}) : super(key: key);
-
-  final Color primaryColor = const Color(0xFF1E88E5);
 
   bool _isToday(DateTime date) {
     final now = DateTime.now();
@@ -17,12 +17,17 @@ class NotificationsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return ChangeNotifierProvider(
       create: (_) => NotificationViewModel()..fetchNotifications(),
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: primaryColor,
-          title: const Text('Notifications'),
+          backgroundColor: AppColors.primaryBlue,
+          title: Text(localizations.notifications,
+              style: TextStyle(fontSize: screenWidth * 0.045)),
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
@@ -42,17 +47,17 @@ class NotificationsPage extends StatelessWidget {
                 viewModel.errorMessage!.isNotEmpty) {
               return Center(
                 child: Text(
-                  'Error: ${viewModel.errorMessage}',
+                  '${localizations.error}: ${viewModel.errorMessage}',
                   style: const TextStyle(color: Colors.red),
                 ),
               );
             }
 
             if (viewModel.notifications.isEmpty) {
-              return const Center(
+              return Center(
                 child: Text(
-                  'No notifications 🎉',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  localizations.noNotifications,
+                  style: const TextStyle(fontSize: 18, color: Colors.grey),
                 ),
               );
             }
@@ -69,23 +74,22 @@ class NotificationsPage extends StatelessWidget {
               children: [
                 Container(
                   width: double.infinity,
-                  color: primaryColor.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   child: TextButton.icon(
                     onPressed: () async {
                       final confirmed = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: const Text("Confirm"),
-                          content: const Text(
-                              "Are you sure you want to delete all notifications?"),
+                          title: Text(localizations.confirmation),
+                          content: Text(localizations.confirmDeleteAll),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context, false),
-                              child: const Text("Cancel"),
+                              child: Text(localizations.cancel),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(context, true),
-                              child: const Text("Delete"),
+                              child: Text(localizations.delete),
                             ),
                           ],
                         ),
@@ -98,10 +102,10 @@ class NotificationsPage extends StatelessWidget {
                       }
                     },
                     icon: const Icon(Icons.delete_outline),
-                    label: const Text('Remove All Notifications'),
+                    label: Text(localizations.removeAllNotifications),
                     style: TextButton.styleFrom(
-                      foregroundColor: primaryColor,
-                      textStyle: const TextStyle(fontSize: 16),
+                      foregroundColor: AppColors.primaryBlue,
+                      textStyle: TextStyle(fontSize: screenWidth * 0.04),
                     ),
                   ),
                 ),
@@ -110,10 +114,11 @@ class NotificationsPage extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     children: [
                       if (todayNotifs.isNotEmpty)
-                        _buildSection('Today', todayNotifs, context),
-                      if (previousNotifs.isNotEmpty)
                         _buildSection(
-                            'Previous Notifications', previousNotifs, context),
+                            localizations.today, todayNotifs, context),
+                      if (previousNotifs.isNotEmpty)
+                        _buildSection(localizations.previousNotifications,
+                            previousNotifs, context),
                     ],
                   ),
                 ),
@@ -127,8 +132,8 @@ class NotificationsPage extends StatelessWidget {
 
   Widget _buildSection(
       String title, List<Notifications> notifications, BuildContext context) {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    String iconPath = isDarkMode
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final iconPath = isDarkMode
         ? 'assets/notification_icon.png'
         : 'assets/notification_icon_light.png';
 
@@ -147,18 +152,10 @@ class NotificationsPage extends StatelessWidget {
         ...notifications.map((notif) => Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5),
-              ),
+                  borderRadius: BorderRadius.circular(5)),
+              color: isDarkMode ? Colors.grey[850] : Colors.white,
               child: ListTile(
-                leading: Image.asset(
-                  iconPath,
-                  width: 40,
-                  height: 40,
-                ),
-                title: Text(
-                  notif.title,
-                  style: const TextStyle(fontSize: 14),
-                ),
+                title: Text(notif.title, style: const TextStyle(fontSize: 14)),
                 subtitle: Text(notif.message),
               ),
             )),
